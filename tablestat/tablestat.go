@@ -1,7 +1,7 @@
 // Copyright (c) 2014 Square, Inc
 //
 
-package mysqlstattable
+package tablestat
 
 import (
 	"errors"
@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/square/prodeng/inspect-mysql/mysqltools"
-	"github.com/square/prodeng/inspect/misc"
-	"github.com/square/prodeng/metrics"
+	"github.com/measure/metrics"
+	"github.com/measure/mysql/tools"
+	"github.com/measure/os/misc"
 )
 
 const (
@@ -39,7 +39,7 @@ SELECT table_schema AS db, table_name AS tbl,
 type MysqlStatTables struct {
 	DBs   map[string]*DBStats
 	m     *metrics.MetricContext
-	db    mysqltools.MysqlDB
+	db    tools.MysqlDB
 	nLock *sync.Mutex
 }
 
@@ -71,7 +71,7 @@ func New(m *metrics.MetricContext, Step time.Duration, user, password, config st
 	s.nLock = &sync.Mutex{}
 	// connect to database
 	var err error
-	s.db, err = mysqltools.New(user, password, config)
+	s.db, err = tools.New(user, password, config)
 	s.nLock.Lock()
 	s.DBs = make(map[string]*DBStats)
 	s.nLock.Unlock()

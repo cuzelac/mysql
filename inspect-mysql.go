@@ -12,9 +12,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/square/prodeng/inspect-mysql/mysqlstat"
-	"github.com/square/prodeng/inspect-mysql/mysqlstattable"
-	"github.com/square/prodeng/metrics"
+	"github.com/measure/metrics"
+	"github.com/measure/mysql/dbstat"
+	"github.com/measure/mysql/tablestat"
 )
 
 func main() {
@@ -41,12 +41,12 @@ func main() {
 	}
 	step := time.Millisecond * time.Duration(stepSec) * 1000
 
-	sqlstat, err := mysqlstat.New(m, step, user, password, conf)
+	sqlstat, err := dbstat.New(m, step, user, password, conf)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	sqlstatTables, err := mysqlstattable.New(m, step, user, password, conf)
+	sqlstatTables, err := tablestat.New(m, step, user, password, conf)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

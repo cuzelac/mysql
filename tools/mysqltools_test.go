@@ -16,7 +16,7 @@
 // may be more trouble than is worth. Manual testing may be required for
 // full acceptance tests.
 
-package mysqltools
+package tools
 
 import (
 	"log"

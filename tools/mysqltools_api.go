@@ -1,4 +1,4 @@
-package mysqltools
+package tools
 
 type MysqlDB interface {
 	// makes query to database

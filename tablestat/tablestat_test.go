@@ -16,7 +16,7 @@
 // may be more trouble than is worth. Manual testing may be required for
 // full acceptance tests.
 
-package mysqlstattable
+package tablestat
 
 import (
 	"log"
@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/square/prodeng/metrics"
+	"github.com/measure/metrics"
 )
 
 type testMysqlDB struct {

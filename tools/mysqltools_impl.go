@@ -3,7 +3,7 @@
 // Tools to connect to and query the mysql database.
 // Also includes parsers for "SHOW ENGINE INNODB" query.
 
-package mysqltools
+package tools
 
 import (
 	"errors"

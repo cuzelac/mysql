@@ -1,7 +1,7 @@
 // Copyright (c) 2014 Square, Inc
 //
 
-package mysqlstat
+package dbstat
 
 import (
 	"errors"
@@ -12,16 +12,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/square/prodeng/inspect-mysql/mysqltools"
-	"github.com/square/prodeng/inspect/misc"
-	"github.com/square/prodeng/metrics"
+	"github.com/measure/metrics"
+	"github.com/measure/mysql/tools"
+	"github.com/measure/os/misc"
 )
 
 // Collection of metrics and connection to database
 type MysqlStat struct {
 	Metrics *MysqlStatMetrics //collection of metrics
 	m       *metrics.MetricContext
-	db      mysqltools.MysqlDB //mysql connection
+	db      tools.MysqlDB //mysql connection
 }
 
 // metrics being collected about the server/database
@@ -227,7 +227,7 @@ func New(m *metrics.MetricContext, Step time.Duration, user, password, config st
 
 	// connect to database
 	var err error
-	s.db, err = mysqltools.New(user, password, config)
+	s.db, err = tools.New(user, password, config)
 	if err != nil {
 		s.db.Log(err)
 		return nil, err
@@ -678,9 +678,9 @@ func (s *MysqlStat) getInnodbStats() {
 	}
 
 	//parse the result
-	var idb *mysqltools.InnodbStats
+	var idb *tools.InnodbStats
 	for _, val := range res {
-		idb, _ = mysqltools.ParseInnodbStats(val[0])
+		idb, _ = tools.ParseInnodbStats(val[0])
 	}
 	vars := map[string]interface{}{
 		"OS_file_reads":               s.Metrics.OSFileReads,
