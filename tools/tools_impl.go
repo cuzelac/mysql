@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -224,6 +225,21 @@ func (database *mysqlDB) Log(in interface{}) {
 
 func (database *mysqlDB) Close() {
 	database.db.Close()
+}
+
+func CallByMethodName(name string, object interface{}) error {
+	r := reflect.TypeOf(object)
+	re := regexp.MustCompile(name)
+	for i := 0; i < r.NumMethod(); i++ {
+		fmt.Println(r.Method(i).Name)
+		if re.MatchString(r.Method(i).Name) {
+			v := []reflect.Value{}
+			reflect.ValueOf(object).Method(i).Call(v)
+			return nil
+		}
+		fmt.Println("no")
+	}
+	return errors.New("Could not find function")
 }
 
 //Parse results from "SHOW ENGINE INNODB STATUS" query

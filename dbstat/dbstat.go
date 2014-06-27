@@ -5,8 +5,10 @@ package dbstat
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"os/exec"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -222,7 +224,7 @@ SELECT COUNT(*)
 
 //initializes mysqlstat.
 // starts off collect
-func New(m *metrics.MetricContext, Step time.Duration, user, password, config string) (*MysqlStat, error) {
+func New(m *metrics.MetricContext, Step time.Duration, user, password, config string, goCollect bool) (*MysqlStat, error) {
 	s := new(MysqlStat)
 
 	// connect to database
@@ -233,15 +235,16 @@ func New(m *metrics.MetricContext, Step time.Duration, user, password, config st
 		return nil, err
 	}
 	s.Metrics = MysqlStatMetricsNew(m, Step)
+	if goCollect {
+		s.Collect()
 
-	s.Collect()
-
-	ticker := time.NewTicker(Step)
-	go func() {
-		for _ = range ticker.C {
-			go s.Collect()
-		}
-	}()
+		ticker := time.NewTicker(Step)
+		go func() {
+			for _ = range ticker.C {
+				go s.Collect()
+			}
+		}()
+	}
 	return s, nil
 }
 
@@ -256,26 +259,26 @@ func MysqlStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MysqlSta
 // sql.DB is safe for concurrent use by multiple goroutines
 // so launching each metric collector as its own goroutine is safe
 func (s *MysqlStat) Collect() {
-	go s.getVersion()
-	go s.getSlaveStats()
-	go s.getGlobalStatus()
-	go s.getBinlogStats()
-	go s.getStackedQueries()
-	go s.getSessions()
-	go s.getInnodbStats()
-	go s.getNumLongRunQueries()
-	go s.getQueryResponseTime()
-	go s.getBackups()
-	go s.getOldestQuery()
-	go s.getOldestTrx()
-	go s.getBinlogFiles()
-	go s.getInnodbBufferpoolMutexWaits()
-	go s.getSecurity()
-	go s.getBlockingQuerys()
+	go s.GetVersion()
+	go s.GetSlaveStats()
+	go s.GetGlobalStatus()
+	go s.GetBinlogStats()
+	go s.GetStackedQueries()
+	go s.GetSessions()
+	go s.GetInnodbStats()
+	go s.GetNumLongRunQueries()
+	go s.GetQueryResponseTime()
+	go s.GetBackups()
+	go s.GetOldestQuery()
+	go s.GetOldestTrx()
+	go s.GetBinlogFiles()
+	go s.GetInnodbBufferpoolMutexWaits()
+	go s.GetSecurity()
+	go s.GetBlockingQuerys()
 }
 
 // get_slave_stats gets slave statistics
-func (s *MysqlStat) getSlaveStats() {
+func (s *MysqlStat) GetSlaveStats() {
 	res, err := s.db.QueryReturnColumnDict(slaveBackupQuery)
 	if err != nil {
 		s.db.Log(err)
@@ -318,7 +321,7 @@ func (s *MysqlStat) getSlaveStats() {
 }
 
 //gets global statuses
-func (s *MysqlStat) getGlobalStatus() {
+func (s *MysqlStat) GetGlobalStatus() {
 	res, err := s.db.QueryMapFirstColumnToRow(globalStatsQuery)
 	if err != nil {
 		s.db.Log(err)
@@ -377,7 +380,7 @@ func (s *MysqlStat) getGlobalStatus() {
 }
 
 //get mutex info
-func (s *MysqlStat) getInnodbBufferpoolMutexWaits() {
+func (s *MysqlStat) GetInnodbBufferpoolMutexWaits() {
 	res, err := s.db.QueryReturnColumnDict(mutexQuery)
 	if err != nil {
 		s.db.Log(err)
@@ -407,7 +410,7 @@ func (s *MysqlStat) getInnodbBufferpoolMutexWaits() {
 }
 
 //get time of oldest query in seconds
-func (s *MysqlStat) getOldestQuery() {
+func (s *MysqlStat) GetOldestQuery() {
 	res, err := s.db.QueryReturnColumnDict(oldestQuery)
 	if err != nil {
 		s.db.Log(err)
@@ -424,7 +427,7 @@ func (s *MysqlStat) getOldestQuery() {
 	return
 }
 
-func (s *MysqlStat) getOldestTrx() {
+func (s *MysqlStat) GetOldestTrx() {
 	res, err := s.db.QueryReturnColumnDict(oldestTrx)
 	if err != nil {
 		s.db.Log(err)
@@ -439,7 +442,7 @@ func (s *MysqlStat) getOldestTrx() {
 }
 
 //calculate query response times
-func (s *MysqlStat) getQueryResponseTime() {
+func (s *MysqlStat) GetQueryResponseTime() {
 	timers := map[string]*metrics.Counter{
 		".000001":  s.Metrics.QueryResponseSec_000001,
 		".00001":   s.Metrics.QueryResponseSec_00001,
@@ -479,7 +482,7 @@ func (s *MysqlStat) getQueryResponseTime() {
 }
 
 //gets status on binary logs
-func (s *MysqlStat) getBinlogFiles() {
+func (s *MysqlStat) GetBinlogFiles() {
 	res, err := s.db.QueryReturnColumnDict(binlogQuery)
 	if err != nil {
 		s.db.Log(err)
@@ -499,7 +502,7 @@ func (s *MysqlStat) getBinlogFiles() {
 }
 
 //get number of long running queries
-func (s *MysqlStat) getNumLongRunQueries() {
+func (s *MysqlStat) GetNumLongRunQueries() {
 	res, err := s.db.QueryReturnColumnDict(longQuery)
 	if err != nil {
 		s.db.Log(err)
@@ -513,7 +516,7 @@ func (s *MysqlStat) getNumLongRunQueries() {
 //get version
 //version is of the form '1.2.34-56.7' or '9.8.76a-54.3-log'
 // want to represent version in form '1.234567' or '9.876543'
-func (s *MysqlStat) getVersion() {
+func (s *MysqlStat) GetVersion() {
 	res, err := s.db.QueryReturnColumnDict(versionQuery)
 	if err != nil {
 		s.db.Log(err)
@@ -544,7 +547,7 @@ func (s *MysqlStat) getVersion() {
 }
 
 // get binlog statistics
-func (s *MysqlStat) getBinlogStats() {
+func (s *MysqlStat) GetBinlogStats() {
 	res, err := s.db.QueryReturnColumnDict(binlogStatsQuery)
 	if err != nil {
 		s.db.Log(err)
@@ -568,7 +571,7 @@ func (s *MysqlStat) getBinlogStats() {
 }
 
 //detect application bugs which result in multiple instance of the same query "stacking up"/ executing at the same time
-func (s *MysqlStat) getStackedQueries() {
+func (s *MysqlStat) GetStackedQueries() {
 	cmd := stackedQuery
 	res, err := s.db.QueryReturnColumnDict(cmd)
 	if err != nil {
@@ -591,7 +594,7 @@ func (s *MysqlStat) getStackedQueries() {
 }
 
 //get session stats
-func (s *MysqlStat) getSessions() {
+func (s *MysqlStat) GetSessions() {
 	res, err := s.db.QueryReturnColumnDict(sessionQuery1)
 	if err != nil {
 		s.db.Log(err)
@@ -657,7 +660,7 @@ func (s *MysqlStat) getSessions() {
 }
 
 //metrics from innodb
-func (s *MysqlStat) getInnodbStats() {
+func (s *MysqlStat) GetInnodbStats() {
 	res, err := s.db.QueryReturnColumnDict(innodbQuery)
 	if err != nil {
 		s.db.Log(err)
@@ -750,7 +753,7 @@ func (s *MysqlStat) getInnodbStats() {
 }
 
 //get backups count
-func (s *MysqlStat) getBackups() {
+func (s *MysqlStat) GetBackups() {
 	out, err := exec.Command("ps", "aux").Output()
 	if err != nil {
 		s.db.Log(err)
@@ -776,7 +779,7 @@ func (s *MysqlStat) getBackups() {
 }
 
 //get count unsecure users
-func (s *MysqlStat) getSecurity() {
+func (s *MysqlStat) GetSecurity() {
 	res, err := s.db.QueryReturnColumnDict(securityQuery)
 	if err != nil {
 		s.db.Log(err)
@@ -785,7 +788,7 @@ func (s *MysqlStat) getSecurity() {
 	s.Metrics.UnsecureUsers.Set(float64(len(res["users"])))
 }
 
-func (s *MysqlStat) getBlockingQuerys() {
+func (s *MysqlStat) GetBlockingQuerys() {
 	res, err := s.db.QueryReturnColumnDict(blockingQuery)
 	if err != nil {
 		s.db.Log(err)
@@ -801,4 +804,49 @@ func (s *MysqlStat) getBlockingQuerys() {
 // Closes database connection
 func (s *MysqlStat) Close() {
 	s.db.Close()
+}
+
+//CallByMethodName searches for a method implemented
+// by s with name. Runs all methods that match names.
+func (s *MysqlStat) CallByMethodName(name string) error {
+	r := reflect.TypeOf(s)
+	re := regexp.MustCompile(strings.ToLower(name))
+	f := false
+	for i := 0; i < r.NumMethod(); i++ {
+		n := strings.ToLower(r.Method(i).Name)
+		if strings.Contains(n, "get") && re.MatchString(n) {
+			fmt.Println(n)
+			reflect.ValueOf(s).Method(i).Call([]reflect.Value{})
+			f = true
+		}
+	}
+	if !f {
+		return errors.New("Could not find function")
+	}
+	return nil
+}
+
+//returns []string of non-empty metrics
+//TODO: use each counter/gauge's marshal function instead
+func (s *MysqlStat) GetNonemptyMetrics() []string {
+	r := []string{}
+	tt := reflect.TypeOf(*s.Metrics)
+	st := reflect.ValueOf(*s.Metrics)
+	fmt.Println(st.NumField())
+	for i := 0; i < st.NumField(); i++ {
+		n := st.Field(i).Interface()
+		name := tt.Field(i).Name
+		switch metric := n.(type) {
+		case *metrics.Counter:
+			if !math.IsNaN(metric.ComputeRate()) {
+				r = append(r, name+" Value: "+strconv.FormatUint(metric.Get(), 10)+
+					" Rate: "+strconv.FormatFloat(metric.ComputeRate(), 'f', 5, 64))
+			}
+		case *metrics.Gauge:
+			if !math.IsNaN(metric.Get()) {
+				r = append(r, name+" Value: "+strconv.FormatFloat(metric.Get(), 'f', 5, 64))
+			}
+		}
+	}
+	return r
 }

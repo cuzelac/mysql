@@ -6,7 +6,10 @@ package tablestat
 import (
 	"errors"
 	"fmt"
+	"reflect"
+	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -269,4 +272,21 @@ func (s *MysqlStatTables) getTableStatistics() {
 //Closes connection with database
 func (s *MysqlStatTables) Close() {
 	s.db.Close()
+}
+
+func (s *MysqlStatTables) CallByMethodName(name string) error {
+	r := reflect.TypeOf(s)
+	re := regexp.MustCompile(strings.ToLower(name))
+	f := false
+	for i := 0; i < r.NumMethod(); i++ {
+		n := strings.ToLower(r.Method(i).Name)
+		if strings.Contains(n, "get") && re.MatchString(n) {
+			reflect.ValueOf(s).Method(i).Call([]reflect.Value{})
+			f = true
+		}
+	}
+	if !f {
+		return errors.New("Could not find function")
+	}
+	return nil
 }

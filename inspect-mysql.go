@@ -15,10 +15,11 @@ import (
 	"github.com/measure/metrics"
 	"github.com/measure/mysql/dbstat"
 	"github.com/measure/mysql/tablestat"
+	//	"github.com/measure/mysql/tools"
 )
 
 func main() {
-	var user, password, address, conf string
+	var user, password, address, conf, group string
 	var stepSec int
 	var servermode, human bool
 
@@ -31,6 +32,7 @@ func main() {
 	flag.IntVar(&stepSec, "step", 2, "metrics are collected every step seconds")
 	flag.StringVar(&conf, "conf", "/root/.my.cnf", "configuration file")
 	flag.BoolVar(&human, "h", false, "Makes output in MB for human readable sizes")
+	flag.StringVar(&group, "group", "", "group of metrics to collect")
 	flag.Parse()
 
 	if servermode {
@@ -41,32 +43,57 @@ func main() {
 	}
 	step := time.Millisecond * time.Duration(stepSec) * 1000
 
-	sqlstat, err := dbstat.New(m, step, user, password, conf)
-	if err != nil {
+	if group != "" {
+		sqlstat, err := dbstat.New(m, step, user, password, conf, false)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		//	sqlstatTables, err := tablestat.New(m, step, user, password, conf)
+		//	if err != nil {
+		//		fmt.Println(err)
+		//		os.Exit(1)
+		//	}
+		err = sqlstat.CallByMethodName(group)
 		fmt.Println(err)
-		os.Exit(1)
-	}
-	sqlstatTables, err := tablestat.New(m, step, user, password, conf)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	ticker := time.NewTicker(step * 2)
-	for _ = range ticker.C {
-		//Print stats here, more stats than printed are actually collected
-		fmt.Println("--------------------------")
-		fmt.Println("Version: " + strconv.FormatFloat(sqlstat.Metrics.Version.Get(), 'f', -1, 64))
-		fmt.Println("Queries made: " + strconv.Itoa(int(sqlstat.Metrics.Queries.Get())))
-		fmt.Println("Uptime: " + strconv.Itoa(int(sqlstat.Metrics.Uptime.Get())))
-		fmt.Println("Database sizes: ")
-		for dbname, db := range sqlstatTables.DBs {
-			size := db.Metrics.SizeBytes.Get()
-			units := " B"
-			if human {
-				size /= (1024 * 1024)
-				units = " GB"
+		//  err = sqlstatTables.CallByMethodName(group)
+		//  fmt.Println(err)
+		b1 := sqlstat.GetNonemptyMetrics()
+		for _, b := range b1 {
+			fmt.Println(b)
+		}
+		//  b2 := sqlstatTables.GetNonemptyMetrics()
+		//  for _, b := range b2 {
+		//    fmt.Println(b)
+		//  }
+	} else {
+		sqlstat, err := dbstat.New(m, step, user, password, conf, true)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		sqlstatTables, err := tablestat.New(m, step, user, password, conf)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		ticker := time.NewTicker(step * 2)
+		for _ = range ticker.C {
+			//Print stats here, more stats than printed are actually collected
+			fmt.Println("--------------------------")
+			fmt.Println("Version: " + strconv.FormatFloat(sqlstat.Metrics.Version.Get(), 'f', -1, 64))
+			fmt.Println("Queries made: " + strconv.Itoa(int(sqlstat.Metrics.Queries.Get())))
+			fmt.Println("Uptime: " + strconv.Itoa(int(sqlstat.Metrics.Uptime.Get())))
+			fmt.Println("Database sizes: ")
+			for dbname, db := range sqlstatTables.DBs {
+				size := db.Metrics.SizeBytes.Get()
+				units := " B"
+				if human {
+					size /= (1024 * 1024)
+					units = " GB"
+				}
+				fmt.Println("    " + dbname + ": " + strconv.FormatFloat(size, 'f', 2, 64) + units)
 			}
-			fmt.Println("    " + dbname + ": " + strconv.FormatFloat(size, 'f', 2, 64) + units)
 		}
 	}
 
