@@ -49,30 +49,30 @@ func main() {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		//	sqlstatTables, err := tablestat.New(m, step, user, password, conf)
-		//	if err != nil {
-		//		fmt.Println(err)
-		//		os.Exit(1)
-		//	}
+		sqlstatTables, err := tablestat.New(m, step, user, password, conf, false)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 		err = sqlstat.CallByMethodName(group)
 		fmt.Println(err)
-		//  err = sqlstatTables.CallByMethodName(group)
-		//  fmt.Println(err)
+		err = sqlstatTables.CallByMethodName(group)
+		fmt.Println(err)
 		b1 := sqlstat.GetNonemptyMetrics()
 		for _, b := range b1 {
 			fmt.Println(b)
 		}
-		//  b2 := sqlstatTables.GetNonemptyMetrics()
-		//  for _, b := range b2 {
-		//    fmt.Println(b)
-		//  }
+		b2 := sqlstatTables.GetNonemptyMetrics()
+		for _, b := range b2 {
+			fmt.Println(b)
+		}
 	} else {
 		sqlstat, err := dbstat.New(m, step, user, password, conf, true)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		sqlstatTables, err := tablestat.New(m, step, user, password, conf)
+		sqlstatTables, err := tablestat.New(m, step, user, password, conf, true)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)

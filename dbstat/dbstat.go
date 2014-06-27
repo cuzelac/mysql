@@ -28,110 +28,137 @@ type MysqlStat struct {
 
 // metrics being collected about the server/database
 type MysqlStatMetrics struct {
-	ASFsynce                      *metrics.Gauge
-	ActiveLongRunQueries          *metrics.Gauge
-	ActiveSessions                *metrics.Gauge
+	//GetSlave Stats
+	SlaveSecondsBehindMaster *metrics.Gauge
+	SlaveSeqFile             *metrics.Gauge
+	SlavePosition            *metrics.Counter
+
+	//GetGlobalStatus
+	BinlogCacheDiskUse        *metrics.Counter
+	BinlogCacheUse            *metrics.Counter
+	ComAlterTable             *metrics.Counter
+	ComBegin                  *metrics.Counter
+	ComCommit                 *metrics.Counter
+	ComCreateTable            *metrics.Counter
+	ComDelete                 *metrics.Counter
+	ComDeleteMulti            *metrics.Counter
+	ComDropTable              *metrics.Counter
+	ComInsert                 *metrics.Counter
+	ComInsertSelect           *metrics.Counter
+	ComReplace                *metrics.Counter
+	ComReplaceSelect          *metrics.Counter
+	ComRollback               *metrics.Counter
+	ComSelect                 *metrics.Counter
+	ComUpdate                 *metrics.Counter
+	ComUpdateMulti            *metrics.Counter
+	CreatedTmpDiskTables      *metrics.Counter
+	CreatedTmpFiles           *metrics.Counter
+	CreatedTmpTables          *metrics.Counter
+	InnodbCurrentRowLocks     *metrics.Counter
+	InnodbLogOsWaits          *metrics.Counter
+	InnodbRowLockCurrentWaits *metrics.Counter
+	InnodbRowLockTimeAvg      *metrics.Counter
+	InnodbRowLockTimeMax      *metrics.Counter
+	Queries                   *metrics.Counter
+	SortMergePasses           *metrics.Counter
+	ThreadsConnected          *metrics.Counter
+	Uptime                    *metrics.Counter
+	ThreadsRunning            *metrics.Counter
+
+	//GetInnodbBufferPoolMutexWaits
+	InnodbBufpoolLRUMutexOSWait *metrics.Counter
+	InnodbBufpoolZipMutexOSWait *metrics.Counter
+
+	//GetOldestQueryS
+	OldestQueryS *metrics.Gauge
+
+	//GetOldestTrxS
+	OldestTrxS *metrics.Gauge
+
+	//BinlogFiles
+	BinlogFiles *metrics.Gauge
+	BinlogSize  *metrics.Gauge
+
+	//GetNumLongRunQueries
+	ActiveLongRunQueries *metrics.Gauge
+
+	//GetVersion
+	Version *metrics.Gauge
+
+	//GetBinlogStats
+	BinlogSeqFile  *metrics.Gauge
+	BinlogPosition *metrics.Counter
+
+	//GetStackedQueries
+	IdenticalQueriesStacked *metrics.Gauge
+	IdenticalQueriesMaxAge  *metrics.Gauge
+
+	//GetSessions
+	ActiveSessions          *metrics.Gauge
+	BusySessionPct          *metrics.Gauge
+	CurrentSessions         *metrics.Gauge
+	CurrentConnectionsPct   *metrics.Gauge
+	LockedSessions          *metrics.Gauge
+	MaxConnections          *metrics.Gauge
+	SessionTablesLocks      *metrics.Gauge
+	SessionGlobalReadLocks  *metrics.Gauge
+	SessionsCopyingToTable  *metrics.Gauge
+	SessionsStatistics      *metrics.Gauge
+	UnauthenticatedSessions *metrics.Gauge
+
+	//GetInnodbStats
+	OSFileReads                   *metrics.Gauge
+	OSFileWrites                  *metrics.Gauge
 	AdaptiveHash                  *metrics.Gauge
 	AvgBytesPerRead               *metrics.Gauge
-	BinlogCacheDiskUse            *metrics.Counter
-	BinlogCacheUse                *metrics.Counter
-	BinlogFiles                   *metrics.Gauge
-	BinlogPosition                *metrics.Counter
-	BinlogSeqFile                 *metrics.Gauge
-	BinlogSize                    *metrics.Gauge
 	BufferPoolHitRate             *metrics.Gauge
 	BufferPoolSize                *metrics.Gauge
-	BusySessionPct                *metrics.Gauge
-	BackupsRunning                *metrics.Gauge
-	BlockingQueryS                *metrics.Gauge
 	CacheHitPct                   *metrics.Gauge
-	ComAlterTable                 *metrics.Counter
-	ComBegin                      *metrics.Counter
-	ComCommit                     *metrics.Counter
-	ComCreateTable                *metrics.Counter
-	ComDelete                     *metrics.Counter
-	ComDeleteMulti                *metrics.Counter
-	ComDropTable                  *metrics.Counter
-	ComInsert                     *metrics.Counter
-	ComInsertSelect               *metrics.Counter
-	ComReplace                    *metrics.Counter
-	ComReplaceSelect              *metrics.Counter
-	ComRollback                   *metrics.Counter
-	ComSelect                     *metrics.Counter
-	ComUpdate                     *metrics.Counter
-	ComUpdateMulti                *metrics.Counter
-	CreatedTmpDiskTables          *metrics.Counter
-	CreatedTmpFiles               *metrics.Counter
-	CreatedTmpTables              *metrics.Counter
-	CurrentConnectionsPct         *metrics.Gauge
-	CurrentSessions               *metrics.Gauge
+	InnodbCheckpointAge           *metrics.Gauge
+	InnodbCheckpointAgeTarget     *metrics.Gauge
 	DatabasePages                 *metrics.Gauge
 	DictionaryCache               *metrics.Gauge
 	DictionaryMemoryAllocated     *metrics.Gauge
 	FileSystem                    *metrics.Gauge
 	FreeBuffers                   *metrics.Gauge
 	FsyncsPerSec                  *metrics.Gauge
-	IdenticalQueriesMaxAge        *metrics.Gauge
-	IdenticalQueriesStacked       *metrics.Gauge
-	InnodbBufpoolLRUMutexOSWait   *metrics.Counter
-	InnodbBufpoolZipMutexOSWait   *metrics.Counter
-	InnodbCheckpointAge           *metrics.Gauge
-	InnodbCheckpointAgeTarget     *metrics.Gauge
-	InnodbCurrentRowLocks         *metrics.Gauge
 	InnodbHistoryLinkList         *metrics.Gauge
 	InnodbLastCheckpointAt        *metrics.Gauge
+	LockSystem                    *metrics.Gauge
 	InnodbLogFlushedUpTo          *metrics.Gauge
-	InnodbLogOsWaits              *metrics.Gauge
-	InnodbLogSequenceNumber       *metrics.Counter
-	InnodbLogWriteRatio           *metrics.Gauge
+	LogIOPerSec                   *metrics.Gauge
+	InnodbLogSequenceNumber       *metrics.Gauge
 	InnodbMaxCheckpointAge        *metrics.Gauge
 	InnodbModifiedAge             *metrics.Gauge
-	InnodbPendingCheckpointWrites *metrics.Gauge
-	InnodbPendingLogWrites        *metrics.Gauge
-	InnodbRowLockCurrentWaits     *metrics.Gauge
-	InnodbRowLockTimeAvg          *metrics.Gauge
-	InnodbRowLockTimeMax          *metrics.Counter
-	InnodbTransactionsNotStarted  *metrics.Gauge
-	InnodbUndo                    *metrics.Counter
-	LockSystem                    *metrics.Gauge
-	LockedSessions                *metrics.Gauge
-	LogIOPerSec                   *metrics.Gauge
-	MaxConnections                *metrics.Gauge
 	ModifiedDBPages               *metrics.Gauge
-	OSFileReads                   *metrics.Gauge
-	OSFileWrites                  *metrics.Gauge
 	OldDatabasePages              *metrics.Gauge
-	OldestQueryS                  *metrics.Gauge
-	OldestTrxS                    *metrics.Gauge
-	OpenTables                    *metrics.Gauge
 	PageHash                      *metrics.Gauge
 	PagesFlushedUpTo              *metrics.Gauge
 	PagesMadeYoung                *metrics.Gauge
 	PagesRead                     *metrics.Gauge
+	InnodbLogWriteRatio           *metrics.Gauge
+	InnodbPendingCheckpointWrites *metrics.Gauge
+	InnodbPendingLogWrites        *metrics.Gauge
 	PendingReads                  *metrics.Gauge
 	PendingWritesLRU              *metrics.Gauge
-	Queries                       *metrics.Counter
 	ReadsPerSec                   *metrics.Gauge
 	RecoverySystem                *metrics.Gauge
-	SessionsCopyingToTable        *metrics.Gauge
-	SessionGlobalReadLocks        *metrics.Gauge
-	SessionsStatistics            *metrics.Gauge
-	SessionTablesLocks            *metrics.Gauge
-	SlavePosition                 *metrics.Counter
-	SlaveSecondsBehindMaster      *metrics.Gauge
-	SlaveSeqFile                  *metrics.Gauge
-	SortMergePasses               *metrics.Counter
-	ThreadsConnected              *metrics.Gauge
-	ThreadsRunning                *metrics.Gauge
 	TotalMem                      *metrics.Gauge
 	TotalMemByReadViews           *metrics.Gauge
 	TransactionID                 *metrics.Gauge
-	UnauthenticatedSessions       *metrics.Gauge
-	UnsecureUsers                 *metrics.Gauge
-	Uptime                        *metrics.Counter
-	UptimeSinceFlushStatus        *metrics.Counter
-	Version                       *metrics.Gauge
+	InnodbTransactionsNotStarted  *metrics.Gauge
+	InnodbUndo                    *metrics.Gauge
 	WritesPerSec                  *metrics.Gauge
+
+	//GetBackups
+	BackupsRunning *metrics.Gauge
+
+	//GetSecurity
+	UnsecureUsers *metrics.Gauge
+
+	//GetBlockingQuery
+	BlockingQueryS *metrics.Gauge
+
 	//Query response time metrics
 	QueryResponseSec_000001  *metrics.Counter
 	QueryResponseSec_00001   *metrics.Counter
@@ -265,7 +292,6 @@ func (s *MysqlStat) Collect() {
 	go s.GetBinlogStats()
 	go s.GetStackedQueries()
 	go s.GetSessions()
-	go s.GetInnodbStats()
 	go s.GetNumLongRunQueries()
 	go s.GetQueryResponseTime()
 	go s.GetBackups()
@@ -832,7 +858,6 @@ func (s *MysqlStat) GetNonemptyMetrics() []string {
 	r := []string{}
 	tt := reflect.TypeOf(*s.Metrics)
 	st := reflect.ValueOf(*s.Metrics)
-	fmt.Println(st.NumField())
 	for i := 0; i < st.NumField(); i++ {
 		n := st.Field(i).Interface()
 		name := tt.Field(i).Name
