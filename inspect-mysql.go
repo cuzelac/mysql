@@ -21,7 +21,7 @@ import (
 func main() {
 	var user, password, address, conf, group string
 	var stepSec int
-	var servermode, human bool
+	var servermode, human, loop bool
 
 	m := metrics.NewMetricContext("system")
 
@@ -33,6 +33,7 @@ func main() {
 	flag.StringVar(&conf, "conf", "/root/.my.cnf", "configuration file")
 	flag.BoolVar(&human, "h", false, "Makes output in MB for human readable sizes")
 	flag.StringVar(&group, "group", "", "group of metrics to collect")
+	flag.BoolVar(&loop, "loop", false, "loop on collecting metrics when specifying group")
 	flag.Parse()
 
 	if servermode {
@@ -54,17 +55,31 @@ func main() {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		err = sqlstat.CallByMethodName(group)
-		fmt.Println(err)
-		err = sqlstatTables.CallByMethodName(group)
-		fmt.Println(err)
+		sqlstat.CallByMethodName(group)
+		sqlstatTables.CallByMethodName(group)
 		b1 := sqlstat.GetNonemptyMetrics()
+		//TODO: clean up this repetition
 		for _, b := range b1 {
 			fmt.Println(b)
 		}
 		b2 := sqlstatTables.GetNonemptyMetrics()
 		for _, b := range b2 {
 			fmt.Println(b)
+		}
+		if loop {
+			ticker := time.NewTicker(step * 2)
+			for _ = range ticker.C {
+				sqlstat.CallByMethodName(group)
+				sqlstatTables.CallByMethodName(group)
+				b1 := sqlstat.GetNonemptyMetrics()
+				for _, b := range b1 {
+					fmt.Println(b)
+				}
+				b2 := sqlstatTables.GetNonemptyMetrics()
+				for _, b := range b2 {
+					fmt.Println(b)
+				}
+			}
 		}
 	} else {
 		sqlstat, err := dbstat.New(m, step, user, password, conf, true)

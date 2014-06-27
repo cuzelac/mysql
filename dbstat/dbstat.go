@@ -856,11 +856,11 @@ func (s *MysqlStat) CallByMethodName(name string) error {
 //TODO: use each counter/gauge's marshal function instead
 func (s *MysqlStat) GetNonemptyMetrics() []string {
 	r := []string{}
-	tt := reflect.TypeOf(*s.Metrics)
-	st := reflect.ValueOf(*s.Metrics)
-	for i := 0; i < st.NumField(); i++ {
-		n := st.Field(i).Interface()
-		name := tt.Field(i).Name
+	metricstype := reflect.TypeOf(*s.Metrics)
+	metricvalue := reflect.ValueOf(*s.Metrics)
+	for i := 0; i < metricvalue.NumField(); i++ {
+		n := metricvalue.Field(i).Interface()
+		name := metricstype.Field(i).Name
 		switch metric := n.(type) {
 		case *metrics.Counter:
 			if !math.IsNaN(metric.ComputeRate()) {
