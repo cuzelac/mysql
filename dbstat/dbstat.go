@@ -6,6 +6,7 @@ package dbstat
 import (
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"os/exec"
 	"reflect"
@@ -54,16 +55,16 @@ type MysqlStatMetrics struct {
 	CreatedTmpDiskTables      *metrics.Counter
 	CreatedTmpFiles           *metrics.Counter
 	CreatedTmpTables          *metrics.Counter
-	InnodbCurrentRowLocks     *metrics.Counter
-	InnodbLogOsWaits          *metrics.Counter
-	InnodbRowLockCurrentWaits *metrics.Counter
-	InnodbRowLockTimeAvg      *metrics.Counter
+	InnodbCurrentRowLocks     *metrics.Gauge
+	InnodbLogOsWaits          *metrics.Gauge
+	InnodbRowLockCurrentWaits *metrics.Gauge
+	InnodbRowLockTimeAvg      *metrics.Gauge
 	InnodbRowLockTimeMax      *metrics.Counter
 	Queries                   *metrics.Counter
 	SortMergePasses           *metrics.Counter
-	ThreadsConnected          *metrics.Counter
+	ThreadsConnected          *metrics.Gauge
 	Uptime                    *metrics.Counter
-	ThreadsRunning            *metrics.Counter
+	ThreadsRunning            *metrics.Gauge
 
 	//GetInnodbBufferPoolMutexWaits
 	InnodbBufpoolLRUMutexOSWait *metrics.Counter
@@ -841,7 +842,6 @@ func (s *MysqlStat) CallByMethodName(name string) error {
 	for i := 0; i < r.NumMethod(); i++ {
 		n := strings.ToLower(r.Method(i).Name)
 		if strings.Contains(n, "get") && re.MatchString(n) {
-			fmt.Println(n)
 			reflect.ValueOf(s).Method(i).Call([]reflect.Value{})
 			f = true
 		}
@@ -852,10 +852,10 @@ func (s *MysqlStat) CallByMethodName(name string) error {
 	return nil
 }
 
-//returns []string of non-empty metrics
-//TODO: use each counter/gauge's marshal function instead
-func (s *MysqlStat) GetNonemptyMetrics() []string {
-	r := []string{}
+//returns []string of metric values of the form:
+// "metric_name metric_value"
+// This is the form that stats-collector uses to send messages to graphite
+func (s *MysqlStat) FormatGraphite(w io.Writer) error {
 	metricstype := reflect.TypeOf(*s.Metrics)
 	metricvalue := reflect.ValueOf(*s.Metrics)
 	for i := 0; i < metricvalue.NumField(); i++ {
@@ -864,14 +864,15 @@ func (s *MysqlStat) GetNonemptyMetrics() []string {
 		switch metric := n.(type) {
 		case *metrics.Counter:
 			if !math.IsNaN(metric.ComputeRate()) {
-				r = append(r, name+" Value: "+strconv.FormatUint(metric.Get(), 10)+
-					" Rate: "+strconv.FormatFloat(metric.ComputeRate(), 'f', 5, 64))
+				fmt.Fprintln(w, name+".Value "+strconv.FormatUint(metric.Get(), 10))
+				fmt.Fprintln(w, name+".Rate "+strconv.FormatFloat(metric.ComputeRate(),
+					'f', 5, 64))
 			}
 		case *metrics.Gauge:
 			if !math.IsNaN(metric.Get()) {
-				r = append(r, name+" Value: "+strconv.FormatFloat(metric.Get(), 'f', 5, 64))
+				fmt.Fprintln(w, name+".Value "+strconv.FormatFloat(metric.Get(), 'f', 5, 64))
 			}
 		}
 	}
-	return r
+	return nil
 }

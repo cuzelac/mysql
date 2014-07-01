@@ -6,6 +6,7 @@ package tablestat
 import (
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"reflect"
 	"regexp"
@@ -285,7 +286,6 @@ func (s *MysqlStatTables) CallByMethodName(name string) error {
 	for i := 0; i < r.NumMethod(); i++ {
 		n := strings.ToLower(r.Method(i).Name)
 		if strings.Contains(n, "get") && re.MatchString(n) {
-			fmt.Println(n)
 			reflect.ValueOf(s).Method(i).Call([]reflect.Value{})
 			f = true
 		}
@@ -296,28 +296,27 @@ func (s *MysqlStatTables) CallByMethodName(name string) error {
 	return nil
 }
 
-//returns []string of non-empty metrics
-//TODO: use each counter/gauge's marshal function instead
-func (s *MysqlStatTables) GetNonemptyMetrics() []string {
-	r := []string{}
+//writes metrics in the form
+// "metric_name metric_value"
+// to the input writer
+func (s *MysqlStatTables) FormatGraphite(w io.Writer) error {
 	for dbname, db := range s.DBs {
-		r = append(r, dbname)
 		if !math.IsNaN(db.Metrics.SizeBytes.Get()) {
-			r = append(r, "  SizeBytes: "+
+			fmt.Fprintln(w, dbname+".SizeBytes "+
 				strconv.FormatFloat(db.Metrics.SizeBytes.Get(), 'f', 5, 64))
 		}
 		for tblname, tbl := range db.Tables {
 			if !math.IsNaN(tbl.SizeBytes.Get()) {
-				r = append(r, "    "+tblname+" SizeBytes: "+
+				fmt.Fprintln(w, dbname+"."+tblname+".SizeBytes "+
 					strconv.FormatFloat(tbl.SizeBytes.Get(), 'f', 5, 64))
 			}
-			r = append(r, "    "+tblname+" RowsRead: "+
+			fmt.Fprintln(w, dbname+"."+tblname+".RowsRead "+
 				strconv.FormatUint(tbl.RowsRead.Get(), 10))
-			r = append(r, "    "+tblname+" RowsChanged: "+
+			fmt.Fprintln(w, dbname+"."+tblname+".RowsChanged "+
 				strconv.FormatUint(tbl.RowsChanged.Get(), 10))
-			r = append(r, "    "+tblname+" RowsChangedXIndexes: "+
+			fmt.Fprintln(w, dbname+"."+tblname+".RowsChangedXIndexes "+
 				strconv.FormatUint(tbl.RowsChangedXIndexes.Get(), 10))
 		}
 	}
-	return r
+	return nil
 }
