@@ -23,7 +23,7 @@ inspect gathers the following metrics:
 
 ##Usage
 
-###Command Line
+###Command Line Utility
 
 `./bin/inspect-mysql`
 Will start off the metrics collector on a loop.
@@ -39,7 +39,7 @@ Database sizes:
 ...
 ```
 
-`./bin/inspect-mysql -group _group_name_` will collect metrics for the specified group.
+`./bin/inspect-mysql -group <group_name>` will collect metrics for the specified group.
 See below for the groupings of metrics.
 
 ###Server
@@ -71,10 +71,42 @@ import "github.com/square/prodeng/metrics"
 m := metrics.NewMetricContext("system")
 
 // Collect mysql metrics every m.Step seconds
-sqlstats := mysqlstat.New(m, time.Millisecond*2000)
+// Username and password may be left as "" if a config file is specified
+sqlstats := mysqlstat.New(m, time.Millisecond*2000, <username>, <password>,
+<config file name>, true)
 
 // Collects mysql metrics for specific databases and tables
-sqltablestats := mysqlstattable.New(m, time.Millisecond*2000)
+// Username and password may be left as "" if a config file is specified
+sqltablestats := mysqlstattable.New(m, time.Millisecond*2000, <username>, <password>,
+<config file name>, true)
+
+// Create new metrics collector but do not collect metrics on loop
+// Username and password may be left as "" if a config file is specified
+sqlstats := mysqlstat.New(m, time.Millisecond*2000, <username>, <password>,
+<config file name>, false)
+
+// Collect all metrics
+sqlstats.Collect()
+
+// Collect a group of metrics:
+sqlstat.GetVersion()
+sqlstat.GetSlaveStats()
+sqlstat.GetGlobalStatus()
+sqlstat.GetBinlogStats()
+sqlstat.GetStackedQueries()
+sqlstat.GetSessions()
+sqlstat.GetNumLongRunQueries()
+sqlstat.GetQueryResponseTime()
+sqlstat.GetBackups()
+sqlstat.GetOldestQuery()
+sqlstat.GetOldestTrx()
+sqlstat.GetBinlogFiles()
+sqlstat.GetInnodbBufferpoolMutexWaits()
+sqlstat.GetSecurity()
+sqlstat.GetBlockingQuerys()
+sqltablestats.GetDBSizes()
+sqltablestats.GetTableSizes()
+sqltablestats.GetTableStatistics()
 ```
 
 All metrics collected are exported, so any metric may be accessed using Get():
