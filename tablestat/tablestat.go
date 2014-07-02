@@ -6,7 +6,12 @@ package tablestat
 import (
 	"errors"
 	"fmt"
+	"io"
+	"math"
+	"reflect"
+	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -65,7 +70,7 @@ type MysqlStatPerDB struct {
 
 //initializes mysqlstat
 // starts off collect
-func New(m *metrics.MetricContext, Step time.Duration, user, password, config string) (*MysqlStatTables, error) {
+func New(m *metrics.MetricContext, Step time.Duration, user, password, config string, goCollect bool) (*MysqlStatTables, error) {
 	s := new(MysqlStatTables)
 	s.m = m
 	s.nLock = &sync.Mutex{}
@@ -78,15 +83,16 @@ func New(m *metrics.MetricContext, Step time.Duration, user, password, config st
 	if err != nil { //error in connecting to database
 		return nil, err
 	}
+	if goCollect {
+		s.Collect()
 
-	s.Collect()
-
-	ticker := time.NewTicker(Step)
-	go func() {
-		for _ = range ticker.C {
-			go s.Collect()
-		}
-	}()
+		ticker := time.NewTicker(Step)
+		go func() {
+			for _ = range ticker.C {
+				go s.Collect()
+			}
+		}()
+	}
 	return s, nil
 }
 
@@ -109,9 +115,9 @@ func newMysqlStatPerTable(m *metrics.MetricContext, dbname, tblname string) *Mys
 // sql.DB is thread safe so launching metrics collectors
 // in their own goroutines is safe
 func (s *MysqlStatTables) Collect() {
-	go s.getDBSizes()
-	go s.getTableSizes()
-	go s.getTableStatistics()
+	go s.GetDBSizes()
+	go s.GetTableSizes()
+	go s.GetTableStatistics()
 }
 
 //instantiate database metrics struct
@@ -144,7 +150,7 @@ func (s *MysqlStatTables) checkTable(dbname, tblname string) {
 }
 
 //gets sizes of databases
-func (s *MysqlStatTables) getDBSizes() {
+func (s *MysqlStatTables) GetDBSizes() {
 	res, err := s.db.QueryReturnColumnDict(innodbMetadataCheck)
 	if err != nil {
 		s.db.Log(err)
@@ -179,7 +185,7 @@ func (s *MysqlStatTables) getDBSizes() {
 }
 
 //gets sizes of tables within databases
-func (s *MysqlStatTables) getTableSizes() {
+func (s *MysqlStatTables) GetTableSizes() {
 	res, err := s.db.QueryReturnColumnDict(innodbMetadataCheck)
 	if err != nil {
 		s.db.Log(err)
@@ -221,7 +227,7 @@ func (s *MysqlStatTables) getTableSizes() {
 }
 
 //get table statistics: rows read, rows changed, rows changed x indices
-func (s *MysqlStatTables) getTableStatistics() {
+func (s *MysqlStatTables) GetTableStatistics() {
 	res, err := s.db.QueryReturnColumnDict(tblStatisticsQuery)
 	if len(res) == 0 || err != nil {
 		s.db.Log(err)
@@ -269,4 +275,48 @@ func (s *MysqlStatTables) getTableStatistics() {
 //Closes connection with database
 func (s *MysqlStatTables) Close() {
 	s.db.Close()
+}
+
+//CallByMethodName searches for a method implemented
+// by s with name. Runs all methods that match names.
+func (s *MysqlStatTables) CallByMethodName(name string) error {
+	r := reflect.TypeOf(s)
+	re := regexp.MustCompile(strings.ToLower(name))
+	f := false
+	for i := 0; i < r.NumMethod(); i++ {
+		n := strings.ToLower(r.Method(i).Name)
+		if strings.Contains(n, "get") && re.MatchString(n) {
+			reflect.ValueOf(s).Method(i).Call([]reflect.Value{})
+			f = true
+		}
+	}
+	if !f {
+		return errors.New("Could not find function")
+	}
+	return nil
+}
+
+//writes metrics in the form
+// "metric_name metric_value"
+// to the input writer
+func (s *MysqlStatTables) FormatGraphite(w io.Writer) error {
+	for dbname, db := range s.DBs {
+		if !math.IsNaN(db.Metrics.SizeBytes.Get()) {
+			fmt.Fprintln(w, dbname+".SizeBytes "+
+				strconv.FormatFloat(db.Metrics.SizeBytes.Get(), 'f', 5, 64))
+		}
+		for tblname, tbl := range db.Tables {
+			if !math.IsNaN(tbl.SizeBytes.Get()) {
+				fmt.Fprintln(w, dbname+"."+tblname+".SizeBytes "+
+					strconv.FormatFloat(tbl.SizeBytes.Get(), 'f', 5, 64))
+			}
+			fmt.Fprintln(w, dbname+"."+tblname+".RowsRead "+
+				strconv.FormatUint(tbl.RowsRead.Get(), 10))
+			fmt.Fprintln(w, dbname+"."+tblname+".RowsChanged "+
+				strconv.FormatUint(tbl.RowsChanged.Get(), 10))
+			fmt.Fprintln(w, dbname+"."+tblname+".RowsChangedXIndexes "+
+				strconv.FormatUint(tbl.RowsChangedXIndexes.Get(), 10))
+		}
+	}
+	return nil
 }

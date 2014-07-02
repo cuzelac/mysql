@@ -186,7 +186,7 @@ func New(user, password, config string) (MysqlDB, error) {
 	}
 	_, err := os.Stat(ini_file)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		return database, errors.New("'" + ini_file + "' does not exist")
 	}
 	// read ini file to get password
@@ -210,7 +210,6 @@ func New(user, password, config string) (MysqlDB, error) {
 	if err != nil {
 		return database, err
 	}
-	fmt.Println("connected to " + user + " @ " + dsn["dbname"])
 	return database, nil
 }
 

@@ -1,5 +1,7 @@
 //Copyright (c) 2014 Square, Inc
+
 //Launches metrics collector for mysql databases
+//
 
 package main
 
@@ -9,7 +11,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/measure/metrics"
@@ -18,19 +19,26 @@ import (
 )
 
 func main() {
-	var user, password, address, conf string
+	var user, password, address, conf, group, form string
 	var stepSec int
-	var servermode, human bool
+	var servermode, human, loop bool
 
 	m := metrics.NewMetricContext("system")
 
 	flag.StringVar(&user, "u", "root", "user using database")
 	flag.StringVar(&password, "p", "", "password for database")
-	flag.BoolVar(&servermode, "server", false, "Runs continously and exposes metrics as JSON on HTTP")
-	flag.StringVar(&address, "address", ":12345", "address to listen on for http if running in server mode")
+	flag.BoolVar(&servermode, "server", false,
+		"Runs continously and exposes metrics as JSON on HTTP")
+	flag.StringVar(&address, "address", ":12345",
+		"address to listen on for http if running in server mode")
 	flag.IntVar(&stepSec, "step", 2, "metrics are collected every step seconds")
 	flag.StringVar(&conf, "conf", "/root/.my.cnf", "configuration file")
-	flag.BoolVar(&human, "h", false, "Makes output in MB for human readable sizes")
+	flag.StringVar(&form, "form", "graphite", "output format of metrics to stdout")
+	flag.BoolVar(&human, "h", false,
+		"Makes output in MB for human readable sizes")
+	flag.StringVar(&group, "group", "", "group of metrics to collect")
+	flag.BoolVar(&loop, "loop", false,
+		"loop on collecting metrics when specifying group")
 	flag.Parse()
 
 	if servermode {
@@ -41,33 +49,62 @@ func main() {
 	}
 	step := time.Millisecond * time.Duration(stepSec) * 1000
 
-	sqlstat, err := dbstat.New(m, step, user, password, conf)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	sqlstatTables, err := tablestat.New(m, step, user, password, conf)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	ticker := time.NewTicker(step * 2)
-	for _ = range ticker.C {
-		//Print stats here, more stats than printed are actually collected
-		fmt.Println("--------------------------")
-		fmt.Println("Version: " + strconv.FormatFloat(sqlstat.Metrics.Version.Get(), 'f', -1, 64))
-		fmt.Println("Queries made: " + strconv.Itoa(int(sqlstat.Metrics.Queries.Get())))
-		fmt.Println("Uptime: " + strconv.Itoa(int(sqlstat.Metrics.Uptime.Get())))
-		fmt.Println("Database sizes: ")
-		for dbname, db := range sqlstatTables.DBs {
-			size := db.Metrics.SizeBytes.Get()
-			units := " B"
-			if human {
-				size /= (1024 * 1024)
-				units = " GB"
+	//if a group is defined, run metrics collections for just that group
+	if group != "" {
+		//initialize metrics collectors to not loop and collect
+		sqlstat, err := dbstat.New(m, step, user, password, conf, false)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		sqlstatTables, err := tablestat.New(m, step, user, password, conf, false)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		//call the specific method name for the wanted group of metrics
+		sqlstat.CallByMethodName(group)
+		sqlstatTables.CallByMethodName(group)
+		outputMetrics(sqlstat, sqlstatTables, m, form)
+		//if metrics collection for this group is wanted on a loop,
+		if loop {
+			ticker := time.NewTicker(step * 2)
+			for _ = range ticker.C {
+				sqlstat.CallByMethodName(group)
+				sqlstatTables.CallByMethodName(group)
+				outputMetrics(sqlstat, sqlstatTables, m, form)
 			}
-			fmt.Println("    " + dbname + ": " + strconv.FormatFloat(size, 'f', 2, 64) + units)
+		}
+		//if no group is specified, just run all metrics collections on a loop
+	} else {
+		sqlstat, err := dbstat.New(m, step, user, password, conf, true)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		sqlstatTables, err := tablestat.New(m, step, user, password, conf, true)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		ticker := time.NewTicker(step * 2)
+		for _ = range ticker.C {
+			outputMetrics(sqlstat, sqlstatTables, m, form)
 		}
 	}
+}
 
+//output metrics in specific output format
+func outputMetrics(d *dbstat.MysqlStat, t *tablestat.MysqlStatTables, m *metrics.MetricContext, form string) {
+	//print out json packages
+	if form == "json" {
+		m.EncodeJSON(os.Stdout)
+	}
+	//print out in graphite form:
+	//<metric_name> <metric_value>
+	if form == "graphite" {
+		d.FormatGraphite(os.Stdout)
+		t.FormatGraphite(os.Stdout)
+	}
 }
