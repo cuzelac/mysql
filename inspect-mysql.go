@@ -78,19 +78,25 @@ func main() {
 		}
 		//if no group is specified, just run all metrics collections on a loop
 	} else {
-		sqlstat, err := dbstat.New(m, step, user, password, conf, true)
+		sqlstat, err := dbstat.New(m, step, user, password, conf, false)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		sqlstatTables, err := tablestat.New(m, step, user, password, conf, true)
+		sqlstatTables, err := tablestat.New(m, step, user, password, conf, false)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		ticker := time.NewTicker(step * 2)
-		for _ = range ticker.C {
-			outputMetrics(sqlstat, sqlstatTables, m, form)
+		sqlstat.Collect()
+		sqlstatTables.Collect()
+		time.Sleep(time.Second)
+		outputMetrics(sqlstat, sqlstatTables, m, form)
+		if loop {
+			ticker := time.NewTicker(step * 2)
+			for _ = range ticker.C {
+				outputMetrics(sqlstat, sqlstatTables, m, form)
+			}
 		}
 	}
 }
