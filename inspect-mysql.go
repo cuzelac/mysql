@@ -14,12 +14,13 @@ import (
 	"time"
 
 	"github.com/measure/metrics"
+	"github.com/measure/metrics/check"
 	"github.com/measure/mysql/dbstat"
 	"github.com/measure/mysql/tablestat"
 )
 
 func main() {
-	var user, password, address, conf, group, form string
+	var user, password, address, conf, group, form, checkConfig string
 	var stepSec int
 	var servermode, human, loop bool
 
@@ -39,6 +40,7 @@ func main() {
 	flag.StringVar(&group, "group", "", "group of metrics to collect")
 	flag.BoolVar(&loop, "loop", false,
 		"loop on collecting metrics when specifying group")
+	flag.StringVar(&checkConfig, "check", "", "config file to check metrics with")
 	flag.Parse()
 
 	if servermode {
@@ -48,6 +50,15 @@ func main() {
 		}()
 	}
 	step := time.Millisecond * time.Duration(stepSec) * 1000
+
+	var err error
+	var c check.Checker
+	if checkConfig != "" {
+		c, err = check.New("", checkConfig)
+		if err != nil {
+			checkConfig = ""
+		}
+	}
 
 	//if a group is defined, run metrics collections for just that group
 	if group != "" {
@@ -66,6 +77,9 @@ func main() {
 		//call the specific method name for the wanted group of metrics
 		sqlstat.CallByMethodName(group)
 		sqlstatTables.CallByMethodName(group)
+		if checkConfig != "" {
+			checkMetrics(c, m)
+		}
 		outputMetrics(sqlstat, sqlstatTables, m, form)
 		//if metrics collection for this group is wanted on a loop,
 		if loop {
@@ -73,6 +87,9 @@ func main() {
 			for _ = range ticker.C {
 				sqlstat.CallByMethodName(group)
 				sqlstatTables.CallByMethodName(group)
+				if checkConfig != "" {
+					checkMetrics(c, m)
+				}
 				outputMetrics(sqlstat, sqlstatTables, m, form)
 			}
 		}
@@ -90,13 +107,30 @@ func main() {
 		}
 		ticker := time.NewTicker(step * 2)
 		for _ = range ticker.C {
+			if checkConfig != "" {
+				checkMetrics(c, m)
+			}
 			outputMetrics(sqlstat, sqlstatTables, m, form)
 		}
 	}
 }
 
+func checkMetrics(c check.Checker, m *metrics.MetricContext) error {
+	err := c.NewScopeAndPackage()
+	if err != nil {
+		return err
+	}
+	err = c.InsertMetricValuesFromContext(m)
+	if err != nil {
+		return err
+	}
+	err = c.CheckAll(os.Stdout)
+	return err
+}
+
 //output metrics in specific output format
-func outputMetrics(d *dbstat.MysqlStat, t *tablestat.MysqlStatTables, m *metrics.MetricContext, form string) {
+func outputMetrics(d *dbstat.MysqlStat, t *tablestat.MysqlStatTables,
+	m *metrics.MetricContext, form string) {
 	//print out json packages
 	if form == "json" {
 		m.EncodeJSON(os.Stdout)
