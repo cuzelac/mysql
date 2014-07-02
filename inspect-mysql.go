@@ -1,5 +1,7 @@
 //Copyright (c) 2014 Square, Inc
+
 //Launches metrics collector for mysql databases
+//
 
 package main
 
@@ -14,7 +16,6 @@ import (
 	"github.com/measure/metrics"
 	"github.com/measure/mysql/dbstat"
 	"github.com/measure/mysql/tablestat"
-	//	"github.com/measure/mysql/tools"
 )
 
 func main() {
@@ -48,6 +49,7 @@ func main() {
 	}
 	step := time.Millisecond * time.Duration(stepSec) * 1000
 
+	//if a group is defined, run metrics collections for just that group
 	if group != "" {
 		//initialize metrics collectors to not loop and collect
 		sqlstat, err := dbstat.New(m, step, user, password, conf, false)
@@ -65,13 +67,16 @@ func main() {
 		sqlstat.CallByMethodName(group)
 		sqlstatTables.CallByMethodName(group)
 		outputMetrics(sqlstat, sqlstatTables, m, form)
+		//if metrics collection for this group is wanted on a loop,
 		if loop {
 			ticker := time.NewTicker(step * 2)
 			for _ = range ticker.C {
 				sqlstat.CallByMethodName(group)
 				sqlstatTables.CallByMethodName(group)
+				outputMetrics(sqlstat, sqlstatTables, m, form)
 			}
 		}
+		//if no group is specified, just run all metrics collections on a loop
 	} else {
 		sqlstat, err := dbstat.New(m, step, user, password, conf, true)
 		if err != nil {
@@ -90,10 +95,14 @@ func main() {
 	}
 }
 
+//output metrics in specific output format
 func outputMetrics(d *dbstat.MysqlStat, t *tablestat.MysqlStatTables, m *metrics.MetricContext, form string) {
+	//print out json packages
 	if form == "json" {
 		m.EncodeJSON(os.Stdout)
 	}
+	//print out in graphite form:
+	//<metric_name> <metric_value>
 	if form == "graphite" {
 		d.FormatGraphite(os.Stdout)
 		t.FormatGraphite(os.Stdout)
