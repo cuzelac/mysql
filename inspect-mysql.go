@@ -6,11 +6,14 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/measure/metrics"
@@ -78,7 +81,7 @@ func main() {
 		sqlstat.CallByMethodName(group)
 		sqlstatTables.CallByMethodName(group)
 		if checkConfig != "" {
-			checkMetrics(c, m)
+			checkMetrics(c, m, os.Stdout)
 		}
 		outputMetrics(sqlstat, sqlstatTables, m, form)
 		//if metrics collection for this group is wanted on a loop,
@@ -88,7 +91,7 @@ func main() {
 				sqlstat.CallByMethodName(group)
 				sqlstatTables.CallByMethodName(group)
 				if checkConfig != "" {
-					checkMetrics(c, m)
+					checkMetrics(c, m, os.Stdout)
 				}
 				outputMetrics(sqlstat, sqlstatTables, m, form)
 			}
@@ -108,14 +111,14 @@ func main() {
 		ticker := time.NewTicker(step * 2)
 		for _ = range ticker.C {
 			if checkConfig != "" {
-				checkMetrics(c, m)
+				checkMetrics(c, m, os.Stdout)
 			}
 			outputMetrics(sqlstat, sqlstatTables, m, form)
 		}
 	}
 }
 
-func checkMetrics(c check.Checker, m *metrics.MetricContext) error {
+func checkMetrics(c check.Checker, m *metrics.MetricContext, w io.Writer) error {
 	err := c.NewScopeAndPackage()
 	if err != nil {
 		return err
@@ -124,8 +127,33 @@ func checkMetrics(c check.Checker, m *metrics.MetricContext) error {
 	if err != nil {
 		return err
 	}
-	err = c.CheckAll(os.Stdout)
+	err = c.CheckAll(w)
 	return err
+}
+
+func outputNagios(c check.Checker, m *metrics.MetricContext) []string {
+	var b []byte
+	buf := bytes.NewBuffer(b)
+	err := checkMetrics(c, m, buf)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	crit := "CRIT"
+	warn := "WARN"
+	ok := "OK"
+	for line, err := buf.ReadString('\n'); line != "" && err != nil; line, err = buf.ReadString('\n') {
+		if strings.Contains(line, "CRIT") {
+			crit += " " + strings.Replace(line, "CRIT", "", -1)
+		} else if strings.Contains(line, "WARN") {
+			warn += " " + strings.Replace(line, "WARN", "", -1)
+		} else if strings.Contains(line, "OK") {
+			ok += " " + strings.Replace(line, "OK", "", -1)
+		}
+	}
+	fmt.Println(crit)
+	fmt.Println(warn)
+	fmt.Println(ok)
+	return []string{crit, warn, ok}
 }
 
 //output metrics in specific output format
