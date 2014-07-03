@@ -52,12 +52,12 @@ func main() {
 	//if a group is defined, run metrics collections for just that group
 	if group != "" {
 		//initialize metrics collectors to not loop and collect
-		sqlstat, err := dbstat.New(m, step, user, password, conf, false)
+		sqlstat, err := dbstat.New(m, user, password, conf)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		sqlstatTables, err := tablestat.New(m, step, user, password, conf, false)
+		sqlstatTables, err := tablestat.New(m, user, password, conf)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -69,7 +69,7 @@ func main() {
 		outputMetrics(sqlstat, sqlstatTables, m, form)
 		//if metrics collection for this group is wanted on a loop,
 		if loop {
-			ticker := time.NewTicker(step * 2)
+			ticker := time.NewTicker(step)
 			for _ = range ticker.C {
 				sqlstat.CallByMethodName(group)
 				sqlstatTables.CallByMethodName(group)
@@ -78,12 +78,12 @@ func main() {
 		}
 		//if no group is specified, just run all metrics collections on a loop
 	} else {
-		sqlstat, err := dbstat.New(m, step, user, password, conf, false)
+		sqlstat, err := dbstat.New(m, user, password, conf)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		sqlstatTables, err := tablestat.New(m, step, user, password, conf, false)
+		sqlstatTables, err := tablestat.New(m, user, password, conf)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -93,8 +93,10 @@ func main() {
 		time.Sleep(time.Second)
 		outputMetrics(sqlstat, sqlstatTables, m, form)
 		if loop {
-			ticker := time.NewTicker(step * 2)
+			ticker := time.NewTicker(step)
 			for _ = range ticker.C {
+				sqlstat.Collect()
+				sqlstatTables.Collect()
 				outputMetrics(sqlstat, sqlstatTables, m, form)
 			}
 		}
