@@ -80,7 +80,6 @@ func main() {
 		sqlstatTables.CallByMethodName(group)
 		if checkConfig != "" {
 			checkMetrics(c, m, os.Stdout)
-			//outputNagios(c,m)
 		}
 		outputMetrics(sqlstat, sqlstatTables, m, form)
 		//if metrics collection for this group is wanted on a loop,
@@ -112,7 +111,6 @@ func main() {
 		time.Sleep(time.Second)
 		if checkConfig != "" {
 			checkMetrics(c, m, os.Stdout)
-			//outputNagios(c,m)
 		}
 		outputMetrics(sqlstat, sqlstatTables, m, form)
 		if loop {
@@ -137,35 +135,6 @@ func checkMetrics(c check.Checker, m *metrics.MetricContext, w io.Writer) error 
 	return err
 }
 
-/*
-func outputNagios(c check.Checker, m *metrics.MetricContext) []string {
-	var b []byte
-	buf := bytes.NewBuffer(b)
-	err := checkMetrics(c, m, buf)
-	fmt.Println("metrics checked")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-	}
-	crit := "CRIT"
-	warn := "WARN"
-	ok := "OK"
-	for line, err := buf.ReadString('\n'); line != ""; line, err = buf.ReadString('\n') {
-		fmt.Println(line)
-		fmt.Println(err)
-		if strings.Contains(line, "CRIT") {
-			crit += " " + strings.Replace(line, "CRIT", "", -1)
-		} else if strings.Contains(line, "WARN") {
-			warn += " " + strings.Replace(line, "WARN", "", -1)
-		} else if strings.Contains(line, "OK") {
-			ok += " " + strings.Replace(line, "OK", "", -1)
-		}
-	}
-	fmt.Println(crit)
-	fmt.Println(warn)
-	fmt.Println(ok)
-	return []string{crit, warn, ok}
-}
-*/
 //output metrics in specific output format
 func outputMetrics(d *dbstat.MysqlStat, t *tablestat.MysqlStatTables,
 	m *metrics.MetricContext, form string) {
