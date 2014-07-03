@@ -250,7 +250,8 @@ SELECT COUNT(*)
 )
 
 //initializes mysqlstat.
-// starts off collect
+//takes as input: metrics context, username, password, path to config file for
+// mysql. username and password can be left as "" if a config file is specified.
 func New(m *metrics.MetricContext, user, password, config string) (*MysqlStat, error) {
 	s := new(MysqlStat)
 

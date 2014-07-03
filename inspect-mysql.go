@@ -54,12 +54,12 @@ func main() {
 		//initialize metrics collectors to not loop and collect
 		sqlstat, err := dbstat.New(m, user, password, conf)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 		sqlstatTables, err := tablestat.New(m, user, password, conf)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 
@@ -80,12 +80,12 @@ func main() {
 	} else {
 		sqlstat, err := dbstat.New(m, user, password, conf)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 		sqlstatTables, err := tablestat.New(m, user, password, conf)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 		sqlstat.Collect()
