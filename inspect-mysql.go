@@ -6,14 +6,12 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/measure/metrics"
@@ -82,6 +80,7 @@ func main() {
 		sqlstatTables.CallByMethodName(group)
 		if checkConfig != "" {
 			checkMetrics(c, m, os.Stdout)
+			//outputNagios(c,m)
 		}
 		outputMetrics(sqlstat, sqlstatTables, m, form)
 		//if metrics collection for this group is wanted on a loop,
@@ -111,6 +110,10 @@ func main() {
 		sqlstat.Collect()
 		sqlstatTables.Collect()
 		time.Sleep(time.Second)
+		if checkConfig != "" {
+			checkMetrics(c, m, os.Stdout)
+			//outputNagios(c,m)
+		}
 		outputMetrics(sqlstat, sqlstatTables, m, form)
 		if loop {
 			ticker := time.NewTicker(step * 2)
@@ -134,17 +137,21 @@ func checkMetrics(c check.Checker, m *metrics.MetricContext, w io.Writer) error 
 	return err
 }
 
+/*
 func outputNagios(c check.Checker, m *metrics.MetricContext) []string {
 	var b []byte
 	buf := bytes.NewBuffer(b)
 	err := checkMetrics(c, m, buf)
+	fmt.Println("metrics checked")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
 	crit := "CRIT"
 	warn := "WARN"
 	ok := "OK"
-	for line, err := buf.ReadString('\n'); line != "" && err != nil; line, err = buf.ReadString('\n') {
+	for line, err := buf.ReadString('\n'); line != ""; line, err = buf.ReadString('\n') {
+		fmt.Println(line)
+		fmt.Println(err)
 		if strings.Contains(line, "CRIT") {
 			crit += " " + strings.Replace(line, "CRIT", "", -1)
 		} else if strings.Contains(line, "WARN") {
@@ -158,7 +165,7 @@ func outputNagios(c check.Checker, m *metrics.MetricContext) []string {
 	fmt.Println(ok)
 	return []string{crit, warn, ok}
 }
-
+*/
 //output metrics in specific output format
 func outputMetrics(d *dbstat.MysqlStat, t *tablestat.MysqlStatTables,
 	m *metrics.MetricContext, form string) {
