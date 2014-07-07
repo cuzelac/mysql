@@ -80,8 +80,7 @@ func initMysqlStat() *MysqlStat {
 	s.db = &testMysqlDB{
 		Logger: log.New(os.Stderr, "TESTING LOG: ", log.Lshortfile),
 	}
-	s.Metrics = MysqlStatMetricsNew(metrics.NewMetricContext("system"),
-		time.Millisecond*time.Duration(1)*1000)
+	s.Metrics = MysqlStatMetricsNew(metrics.NewMetricContext("system"))
 	return s
 }
 
@@ -201,9 +200,9 @@ func TestBasic(t *testing.T) {
 		s.Metrics.ActiveSessions:              float64(2),
 		s.Metrics.UnauthenticatedSessions:     float64(1),
 		s.Metrics.LockedSessions:              float64(0),
-		s.Metrics.TablesLocks:                 float64(1),
-		s.Metrics.CopyingToTable:              float64(1),
-		s.Metrics.Statistics:                  float64(1),
+		s.Metrics.SessionTablesLocks:          float64(1),
+		s.Metrics.SessionsCopyingToTable:      float64(1),
+		s.Metrics.SessionsStatistics:          float64(1),
 		s.Metrics.IdenticalQueriesStacked:     float64(5),
 		s.Metrics.IdenticalQueriesMaxAge:      float64(10),
 		s.Metrics.BinlogSeqFile:               float64(3),
@@ -212,7 +211,7 @@ func TestBasic(t *testing.T) {
 		s.Metrics.ActiveLongRunQueries:        float64(7),
 		s.Metrics.BinlogSize:                  float64(1111),
 		s.Metrics.QueryResponseSec_0001:       uint64(300),
-		s.Metrics.OldestQuery:                 float64(12345),
+		s.Metrics.OldestQueryS:                float64(12345),
 		s.Metrics.InnodbBufpoolLRUMutexOSWait: uint64(54321),
 		s.Metrics.InnodbBufpoolZipMutexOSWait: uint64(4321),
 	}
@@ -370,10 +369,10 @@ func TestSessions(t *testing.T) {
 		s.Metrics.BusySessionPct:          float64(50),
 		s.Metrics.UnauthenticatedSessions: float64(3),
 		s.Metrics.LockedSessions:          float64(1),
-		s.Metrics.TablesLocks:             float64(2),
-		s.Metrics.GlobalReadLocks:         float64(1),
-		s.Metrics.CopyingToTable:          float64(2),
-		s.Metrics.Statistics:              float64(3),
+		s.Metrics.SessionTablesLocks:      float64(2),
+		s.Metrics.SessionGlobalReadLocks:  float64(1),
+		s.Metrics.SessionsCopyingToTable:  float64(2),
+		s.Metrics.SessionsStatistics:      float64(3),
 	}
 	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)
