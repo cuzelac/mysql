@@ -80,8 +80,7 @@ func initMysqlStat() *MysqlStat {
 	s.db = &testMysqlDB{
 		Logger: log.New(os.Stderr, "TESTING LOG: ", log.Lshortfile),
 	}
-	s.Metrics = MysqlStatMetricsNew(metrics.NewMetricContext("system"),
-		time.Millisecond*time.Duration(1)*1000)
+	s.Metrics = MysqlStatMetricsNew(metrics.NewMetricContext("system"))
 	return s
 }
 
