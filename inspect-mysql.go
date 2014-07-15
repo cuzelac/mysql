@@ -76,7 +76,9 @@ func main() {
 				outputMetrics(sqlstat, sqlstatTables, m, form)
 			}
 		}
-		//if no group is specified, just run all metrics collections on a loop
+		sqlstat.Close()
+		sqlstatTables.Close()
+		//if no group is specified, just run all metrics collections
 	} else {
 		sqlstat, err := dbstat.New(m, user, password, conf)
 		if err != nil {
@@ -100,6 +102,8 @@ func main() {
 				outputMetrics(sqlstat, sqlstatTables, m, form)
 			}
 		}
+		sqlstat.Close()
+		sqlstatTables.Close()
 	}
 }
 
