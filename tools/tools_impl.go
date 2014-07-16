@@ -25,7 +25,6 @@ import _ "github.com/go-sql-driver/mysql"
 type mysqlDB struct {
 	db        *sql.DB
 	dsnString string
-	Logger    *log.Logger
 }
 
 const (
@@ -161,9 +160,7 @@ func New(user, password, config string) (MysqlDB, error) {
 	dsn := map[string]string{"dbname": "information_schema"}
 	creds := map[string]string{"root": "/root/.my.cnf", "nrpe": "/etc/my_nrpe.cnf"}
 
-	database := &mysqlDB{
-		Logger: log.New(os.Stderr, "LOG: ", log.Lshortfile),
-	}
+	database := &mysqlDB{}
 
 	if user == "" {
 		user = DEFAULT_MYSQL_USER
@@ -216,9 +213,9 @@ func New(user, password, config string) (MysqlDB, error) {
 func (database *mysqlDB) Log(in interface{}) {
 	_, f, line, ok := runtime.Caller(1)
 	if ok {
-		database.Logger.Println("Log from: " + f + " line: " + strconv.Itoa(line))
+		log.Println("Log from: " + f + " line: " + strconv.Itoa(line))
 	}
-	database.Logger.Println(in)
+	log.Println(in)
 }
 
 func (database *mysqlDB) Close() {
