@@ -26,7 +26,10 @@ inspect gathers the following metrics:
 ###Command Line Utility
 
 `./bin/inspect-mysql`
-Will start off the metrics collector on a loop.
+Will run the metrics collector once.
+
+Adding the `-loop` flag will start the collector to get metrics on a cycle.
+Specifying `-step <x>` will collect metrics every x seconds.
 
 ```
 --------------------------
@@ -72,18 +75,11 @@ m := metrics.NewMetricContext("system")
 
 // Collect mysql metrics every m.Step seconds
 // Username and password may be left as "" if a config file is specified
-sqlstats := mysqlstat.New(m, time.Millisecond*2000, <username>, <password>,
-<config file name>, true)
+sqlstats := mysqlstat.New(m, <username>, <password>, <config file name>)
 
 // Collects mysql metrics for specific databases and tables
 // Username and password may be left as "" if a config file is specified
-sqltablestats := mysqlstattable.New(m, time.Millisecond*2000, <username>, <password>,
-<config file name>, true)
-
-// Create new metrics collector but do not collect metrics on loop
-// Username and password may be left as "" if a config file is specified
-sqlstats := mysqlstat.New(m, time.Millisecond*2000, <username>, <password>,
-<config file name>, false)
+sqltablestats := mysqlstattable.New(m, <username>, <password>, <config file name>)
 
 // Collect all metrics
 sqlstats.Collect()

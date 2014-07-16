@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/measure/metrics"
 	"github.com/measure/mysql/tools"
@@ -69,8 +68,9 @@ type MysqlStatPerDB struct {
 }
 
 //initializes mysqlstat
-// starts off collect
-func New(m *metrics.MetricContext, Step time.Duration, user, password, config string, goCollect bool) (*MysqlStatTables, error) {
+//takes as input: metrics context, username, password, path to config file for
+// mysql. username and password can be left as "" if a config file is specified.
+func New(m *metrics.MetricContext, user, password, config string) (*MysqlStatTables, error) {
 	s := new(MysqlStatTables)
 	s.m = m
 	s.nLock = &sync.Mutex{}
@@ -82,16 +82,6 @@ func New(m *metrics.MetricContext, Step time.Duration, user, password, config st
 	s.nLock.Unlock()
 	if err != nil { //error in connecting to database
 		return nil, err
-	}
-	if goCollect {
-		s.Collect()
-
-		ticker := time.NewTicker(Step)
-		go func() {
-			for _ = range ticker.C {
-				go s.Collect()
-			}
-		}()
 	}
 	return s, nil
 }

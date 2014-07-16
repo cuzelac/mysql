@@ -13,7 +13,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/measure/metrics"
 	"github.com/measure/mysql/tools"
@@ -251,8 +250,9 @@ SELECT COUNT(*)
 )
 
 //initializes mysqlstat.
-// starts off collect
-func New(m *metrics.MetricContext, Step time.Duration, user, password, config string, goCollect bool) (*MysqlStat, error) {
+//takes as input: metrics context, username, password, path to config file for
+// mysql. username and password can be left as "" if a config file is specified.
+func New(m *metrics.MetricContext, user, password, config string) (*MysqlStat, error) {
 	s := new(MysqlStat)
 
 	// connect to database
@@ -262,22 +262,13 @@ func New(m *metrics.MetricContext, Step time.Duration, user, password, config st
 		s.db.Log(err)
 		return nil, err
 	}
-	s.Metrics = MysqlStatMetricsNew(m, Step)
-	if goCollect {
-		s.Collect()
+	s.Metrics = MysqlStatMetricsNew(m)
 
-		ticker := time.NewTicker(Step)
-		go func() {
-			for _ = range ticker.C {
-				go s.Collect()
-			}
-		}()
-	}
 	return s, nil
 }
 
 //initializes metrics
-func MysqlStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MysqlStatMetrics {
+func MysqlStatMetricsNew(m *metrics.MetricContext) *MysqlStatMetrics {
 	c := new(MysqlStatMetrics)
 	misc.InitializeMetrics(c, m, "mysqlstat", true)
 	return c
