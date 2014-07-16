@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/measure/metrics"
 	"github.com/measure/mysql/tools"
@@ -24,6 +25,7 @@ type MysqlStat struct {
 	Metrics *MysqlStatMetrics //collection of metrics
 	m       *metrics.MetricContext
 	db      tools.MysqlDB //mysql connection
+	wg      sync.WaitGroup
 }
 
 // metrics being collected about the server/database
@@ -278,6 +280,7 @@ func MysqlStatMetricsNew(m *metrics.MetricContext) *MysqlStatMetrics {
 // sql.DB is safe for concurrent use by multiple goroutines
 // so launching each metric collector as its own goroutine is safe
 func (s *MysqlStat) Collect() {
+	s.wg.Add(15)
 	go s.GetVersion()
 	go s.GetSlaveStats()
 	go s.GetGlobalStatus()
@@ -293,6 +296,7 @@ func (s *MysqlStat) Collect() {
 	go s.GetInnodbBufferpoolMutexWaits()
 	go s.GetSecurity()
 	go s.GetBlockingQuerys()
+	s.wg.Wait()
 }
 
 // get_slave_stats gets slave statistics
@@ -306,6 +310,7 @@ func (s *MysqlStat) GetSlaveStats() {
 	res, err = s.db.QueryReturnColumnDict(slaveQuery)
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 
@@ -331,10 +336,12 @@ func (s *MysqlStat) GetSlaveStats() {
 		slave_position, err := strconv.ParseFloat(string(res["Exec_Master_Log_Pos"][0]), 64)
 		if err != nil {
 			s.db.Log(err)
+			s.wg.Done()
 			return
 		}
 		s.Metrics.SlavePosition.Set(uint64(slave_position))
 	}
+	s.wg.Done()
 	return
 }
 
@@ -343,6 +350,7 @@ func (s *MysqlStat) GetGlobalStatus() {
 	res, err := s.db.QueryMapFirstColumnToRow(globalStatsQuery)
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 	vars := map[string]interface{}{
@@ -394,6 +402,7 @@ func (s *MysqlStat) GetGlobalStatus() {
 			}
 		}
 	}
+	s.wg.Done()
 	return
 }
 
@@ -402,6 +411,7 @@ func (s *MysqlStat) GetInnodbBufferpoolMutexWaits() {
 	res, err := s.db.QueryReturnColumnDict(mutexQuery)
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 
@@ -415,6 +425,7 @@ func (s *MysqlStat) GetInnodbBufferpoolMutexWaits() {
 		if ok {
 			if !strings.Contains(status, "os_waits=") {
 				s.db.Log(errors.New("mutex status did not contain 'os_waits=': " + status))
+				s.wg.Done()
 				return
 			}
 			os_waits, err := strconv.ParseInt(status[9:], 10, 64)
@@ -424,6 +435,7 @@ func (s *MysqlStat) GetInnodbBufferpoolMutexWaits() {
 			metric.Set(uint64(os_waits))
 		}
 	}
+	s.wg.Done()
 	return
 }
 
@@ -432,6 +444,7 @@ func (s *MysqlStat) GetOldestQuery() {
 	res, err := s.db.QueryReturnColumnDict(oldestQuery)
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 	t := int64(0)
@@ -442,6 +455,7 @@ func (s *MysqlStat) GetOldestQuery() {
 		}
 	}
 	s.Metrics.OldestQueryS.Set(float64(t))
+	s.wg.Done()
 	return
 }
 
@@ -449,6 +463,7 @@ func (s *MysqlStat) GetOldestTrx() {
 	res, err := s.db.QueryReturnColumnDict(oldestTrx)
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 	t := int64(0)
@@ -457,6 +472,8 @@ func (s *MysqlStat) GetOldestTrx() {
 		//only error expecting is when "NULL" is encountered
 	}
 	s.Metrics.OldestTrxS.Set(float64(t))
+	s.wg.Done()
+	return
 }
 
 //calculate query response times
@@ -480,6 +497,7 @@ func (s *MysqlStat) GetQueryResponseTime() {
 	res, err := s.db.QueryReturnColumnDict(responseTimeQuery)
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 
@@ -496,6 +514,7 @@ func (s *MysqlStat) GetQueryResponseTime() {
 			timer.Set(uint64(count))
 		}
 	}
+	s.wg.Done()
 	return
 }
 
@@ -504,6 +523,7 @@ func (s *MysqlStat) GetBinlogFiles() {
 	res, err := s.db.QueryReturnColumnDict(binlogQuery)
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 	s.Metrics.BinlogFiles.Set(float64(len(res["File_size"])))
@@ -516,6 +536,7 @@ func (s *MysqlStat) GetBinlogFiles() {
 		binlog_total_size += si
 	}
 	s.Metrics.BinlogSize.Set(float64(binlog_total_size))
+	s.wg.Done()
 	return
 }
 
@@ -524,10 +545,12 @@ func (s *MysqlStat) GetNumLongRunQueries() {
 	res, err := s.db.QueryReturnColumnDict(longQuery)
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 	found_sql := len(res["ID"])
 	s.Metrics.ActiveLongRunQueries.Set(float64(found_sql))
+	s.wg.Done()
 	return
 }
 
@@ -538,9 +561,11 @@ func (s *MysqlStat) GetVersion() {
 	res, err := s.db.QueryReturnColumnDict(versionQuery)
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 	if len(res["VERSION()"]) == 0 {
+		s.wg.Done()
 		return
 	}
 	version := res["VERSION()"][0]
@@ -561,6 +586,7 @@ func (s *MysqlStat) GetVersion() {
 	if err != nil {
 		s.db.Log(err)
 	}
+	s.wg.Done()
 	return
 }
 
@@ -569,9 +595,11 @@ func (s *MysqlStat) GetBinlogStats() {
 	res, err := s.db.QueryReturnColumnDict(binlogStatsQuery)
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 	if len(res["File"]) == 0 || len(res["Position"]) == 0 {
+		s.wg.Done()
 		return
 	}
 
@@ -585,6 +613,7 @@ func (s *MysqlStat) GetBinlogStats() {
 		s.db.Log(err)
 	}
 	s.Metrics.BinlogPosition.Set(uint64(v))
+	s.wg.Done()
 	return
 }
 
@@ -594,6 +623,7 @@ func (s *MysqlStat) GetStackedQueries() {
 	res, err := s.db.QueryReturnColumnDict(cmd)
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 	if len(res["identical_queries_stacked"]) > 0 {
@@ -608,6 +638,7 @@ func (s *MysqlStat) GetStackedQueries() {
 		}
 		s.Metrics.IdenticalQueriesMaxAge.Set(float64(age))
 	}
+	s.wg.Done()
 	return
 }
 
@@ -616,6 +647,7 @@ func (s *MysqlStat) GetSessions() {
 	res, err := s.db.QueryReturnColumnDict(sessionQuery1)
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 	var max_sessions int64
@@ -629,9 +661,11 @@ func (s *MysqlStat) GetSessions() {
 	res, err = s.db.QueryReturnColumnDict(sessionQuery2)
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 	if len(res["COMMAND"]) == 0 {
+		s.wg.Done()
 		return
 	}
 	current_total := len(res["COMMAND"])
@@ -674,6 +708,7 @@ func (s *MysqlStat) GetSessions() {
 	s.Metrics.SessionsCopyingToTable.Set(float64(copy_to_table))
 	s.Metrics.SessionsStatistics.Set(float64(statistics))
 
+	s.wg.Done()
 	return
 }
 
@@ -682,6 +717,7 @@ func (s *MysqlStat) GetInnodbStats() {
 	res, err := s.db.QueryReturnColumnDict(innodbQuery)
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 	var innodb_log_file_size int64
@@ -695,6 +731,7 @@ func (s *MysqlStat) GetInnodbStats() {
 	res, err = s.db.QueryReturnColumnDict("SHOW ENGINE INNODB STATUS")
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 
@@ -767,6 +804,7 @@ func (s *MysqlStat) GetInnodbStats() {
 		lsn_s, _ := strconv.ParseFloat(lsn, 64)
 		s.Metrics.InnodbLogWriteRatio.Set((lsn_s * 3600.0) / float64(innodb_log_file_size))
 	}
+	s.wg.Done()
 	return
 }
 
@@ -775,6 +813,7 @@ func (s *MysqlStat) GetBackups() {
 	out, err := exec.Command("ps", "aux").Output()
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 	blob := string(out)
@@ -793,6 +832,7 @@ func (s *MysqlStat) GetBackups() {
 		}
 	}
 	s.Metrics.BackupsRunning.Set(float64(backupProcs))
+	s.wg.Done()
 	return
 }
 
@@ -801,22 +841,29 @@ func (s *MysqlStat) GetSecurity() {
 	res, err := s.db.QueryReturnColumnDict(securityQuery)
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 	s.Metrics.UnsecureUsers.Set(float64(len(res["users"])))
+	s.wg.Done()
+	return
 }
 
 func (s *MysqlStat) GetBlockingQuerys() {
 	res, err := s.db.QueryReturnColumnDict(blockingQuery)
 	if err != nil {
 		s.db.Log(err)
+		s.wg.Done()
 		return
 	}
 	if len(res["blocker_age"]) == 0 {
+		s.wg.Done()
 		return
 	}
 	age, _ := strconv.ParseFloat(res["blocker_age"][0], 64)
 	s.Metrics.BlockingQueryS.Set(age)
+	s.wg.Done()
+	return
 }
 
 // Closes database connection
@@ -833,6 +880,7 @@ func (s *MysqlStat) CallByMethodName(name string) error {
 	for i := 0; i < r.NumMethod(); i++ {
 		n := strings.ToLower(r.Method(i).Name)
 		if strings.Contains(n, "get") && re.MatchString(n) {
+			s.wg.Add(1)
 			reflect.ValueOf(s).Method(i).Call([]reflect.Value{})
 			f = true
 		}
