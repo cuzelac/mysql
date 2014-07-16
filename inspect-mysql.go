@@ -137,7 +137,7 @@ func checkMetrics(c check.Checker, m *metrics.MetricContext, w io.Writer) error 
 	if err != nil {
 		return err
 	}
-	err = c.CheckAll(w)
+	_, err = c.CheckAll(w)
 	return err
 }
 
