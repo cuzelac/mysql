@@ -8,14 +8,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/measure/metricchecks"
 	"github.com/measure/metrics"
-	"github.com/measure/metrics/check"
 	"github.com/measure/mysql/dbstat"
 	"github.com/measure/mysql/tablestat"
 )
@@ -53,9 +52,9 @@ func main() {
 	step := time.Millisecond * time.Duration(stepSec) * 1000
 
 	var err error
-	var c check.Checker
+	var c metricchecks.Checker
 	if checkConfig != "" {
-		c, err = check.New("", checkConfig)
+		c, err = metricchecks.New("", checkConfig)
 		if err != nil {
 			checkConfig = ""
 		}
@@ -79,7 +78,7 @@ func main() {
 		sqlstat.CallByMethodName(group)
 		sqlstatTables.CallByMethodName(group)
 		if checkConfig != "" {
-			checkMetrics(c, m, os.Stdout)
+			checkMetrics(c, m)
 		}
 		outputMetrics(sqlstat, sqlstatTables, m, form)
 		//if metrics collection for this group is wanted on a loop,
@@ -89,7 +88,7 @@ func main() {
 				sqlstat.CallByMethodName(group)
 				sqlstatTables.CallByMethodName(group)
 				if checkConfig != "" {
-					checkMetrics(c, m, os.Stdout)
+					checkMetrics(c, m)
 				}
 				outputMetrics(sqlstat, sqlstatTables, m, form)
 			}
@@ -110,10 +109,9 @@ func main() {
 		}
 		sqlstat.Collect()
 		sqlstatTables.Collect()
-		//time.Sleep(time.Second)
 
 		if checkConfig != "" {
-			checkMetrics(c, m, os.Stdout)
+			checkMetrics(c, m)
 		}
 		outputMetrics(sqlstat, sqlstatTables, m, form)
 		if loop {
@@ -129,7 +127,7 @@ func main() {
 	}
 }
 
-func checkMetrics(c check.Checker, m *metrics.MetricContext, w io.Writer) error {
+func checkMetrics(c metricchecks.Checker, m *metrics.MetricContext) error {
 	err := c.NewScopeAndPackage()
 	if err != nil {
 		return err
@@ -138,7 +136,10 @@ func checkMetrics(c check.Checker, m *metrics.MetricContext, w io.Writer) error 
 	if err != nil {
 		return err
 	}
-	_, err = c.CheckAll(w)
+	checks, err := c.CheckAll()
+	for _, check := range checks {
+		fmt.Println(check)
+	}
 	return err
 }
 
