@@ -314,7 +314,7 @@ func (s *MysqlStat) GetSlaveStats() {
 		return
 	}
 
-	if len(res["Seconds_Behind_Master"]) > 0 {
+	if (len(res["Seconds_Behind_Master"]) > 0) && (string(res["Seconds_Behind_Master"][0]) != "") {
 		seconds_behind_master, err := strconv.ParseFloat(string(res["Seconds_Behind_Master"][0]), 64)
 		if err != nil {
 			s.db.Log(err)
