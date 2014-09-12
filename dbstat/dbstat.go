@@ -249,6 +249,7 @@ SELECT
 SELECT COUNT(*) 
   FROM information_schema.processlist 
  WHERE user LIKE '%backup%';`
+	defaultMaxConns = 0
 )
 
 //initializes mysqlstat.
@@ -260,6 +261,7 @@ func New(m *metrics.MetricContext, user, password, config string) (*MysqlStat, e
 	// connect to database
 	var err error
 	s.db, err = tools.New(user, password, config)
+	s.SetMaxConnections(defaultMaxConns)
 	if err != nil {
 		s.db.Log(err)
 		return nil, err
@@ -267,6 +269,11 @@ func New(m *metrics.MetricContext, user, password, config string) (*MysqlStat, e
 	s.Metrics = MysqlStatMetricsNew(m)
 
 	return s, nil
+}
+
+// Set the max number of concurrent connections that the mysql client can use
+func (s *MysqlStat) SetMaxConnections(maxConns int) {
+	s.db.SetMaxConnections(maxConns)
 }
 
 //initializes metrics

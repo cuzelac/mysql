@@ -68,6 +68,10 @@ func (s *testMysqlDB) Close() {
 	return
 }
 
+func (s *testMysqlDB) SetMaxConnections(maxConns int) {
+	return
+}
+
 func initMysqlStatTable() *MysqlStatTables {
 	syscall.Dup2(int(logFile.Fd()), 2)
 	s := new(MysqlStatTables)

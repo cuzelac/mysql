@@ -1,6 +1,9 @@
 package tools
 
 type MysqlDB interface {
+	// set the max number of database connections allowed at once
+	SetMaxConnections(maxConns int)
+
 	// makes query to database
 	// returns result as a mapping of strings to string arrays
 	// where key is column name and value is the items stored in column
