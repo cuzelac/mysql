@@ -249,7 +249,7 @@ SELECT
 SELECT COUNT(*) 
   FROM information_schema.processlist 
  WHERE user LIKE '%backup%';`
-	defaultMaxConns = 0
+	defaultMaxConns = 5
 )
 
 //initializes mysqlstat.
