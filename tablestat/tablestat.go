@@ -37,6 +37,7 @@ SELECT table_schema AS db, table_name AS tbl,
        rows_read, rows_changed, rows_changed_x_indexes  
   FROM INFORMATION_SCHEMA.TABLE_STATISTICS
  WHERE rows_read > 0;`
+	defaultMaxConns = 5
 )
 
 // MysqlStatTables - main struct that contains connection to database, metric context, and map to database stats struct
@@ -85,6 +86,11 @@ func New(m *metrics.MetricContext, user, password, config string) (*MysqlStatTab
 		return nil, err
 	}
 	return s, nil
+}
+
+// Set the max number of concurrent connections that the mysql client can use
+func (s *MysqlStatTables) SetMaxConnections(maxConns int) {
+	s.db.SetMaxConnections(maxConns)
 }
 
 //initialize  per database metrics

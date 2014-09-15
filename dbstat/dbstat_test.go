@@ -72,6 +72,10 @@ func (s *testMysqlDB) Close() {
 	return
 }
 
+func (s *testMysqlDB) SetMaxConnections(maxConns int) {
+	return
+}
+
 //initializes a test instance of MysqlStat.
 // instance does not connect with a db
 func initMysqlStat() *MysqlStat {

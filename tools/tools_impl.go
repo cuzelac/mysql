@@ -104,6 +104,10 @@ func (database *mysqlDB) makeQuery(query string) ([]string, [][]string, error) {
 	return column_names, values, nil
 }
 
+func (database *mysqlDB) SetMaxConnections(maxConns int) {
+	database.db.SetMaxOpenConns(maxConns)
+}
+
 //return values of query in a mapping of column_name -> column
 func (database *mysqlDB) QueryReturnColumnDict(query string) (map[string][]string, error) {
 	column_names, values, err := database.queryDb(query)
