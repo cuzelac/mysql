@@ -99,7 +99,6 @@ sqlstat.GetOldestTrx()
 sqlstat.GetBinlogFiles()
 sqlstat.GetInnodbBufferpoolMutexWaits()
 sqlstat.GetSecurity()
-sqlstat.GetBlockingQuerys()
 sqltablestats.GetDBSizes()
 sqltablestats.GetTableSizes()
 sqltablestats.GetTableStatistics()
@@ -244,9 +243,6 @@ fmt.Println(sqltablestats.DBs["db1"].Tables["t1"].Metrics.SizeBytes.Get())
 
 	//GetSecurity
 	UnsecureUsers *metrics.Gauge
-
-	//GetBlockingQuery
-	BlockingQueryS *metrics.Gauge
 
 	//Query response time metrics
 	QueryResponseSec_000001  *metrics.Counter
