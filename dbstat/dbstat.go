@@ -213,8 +213,8 @@ const (
            processlist.*
       FROM information_schema.processlist
      ORDER BY 1, time DESC;`
-	innodbQuery   = "SHOW GLOBAL VARIABLES LIKE 'innodb_log_file_size';"
-	securityQuery = "SELECT user FROM mysql.user WHERE password = '' AND ssl_type = '';"
+	innodbQuery      = "SHOW GLOBAL VARIABLES LIKE 'innodb_log_file_size';"
+	securityQuery    = "SELECT user FROM mysql.user WHERE password = '' AND ssl_type = '';"
 	slaveBackupQuery = `
 SELECT COUNT(*) 
   FROM information_schema.processlist 
@@ -257,7 +257,7 @@ func MysqlStatMetricsNew(m *metrics.MetricContext) *MysqlStatMetrics {
 // sql.DB is safe for concurrent use by multiple goroutines
 // so launching each metric collector as its own goroutine is safe
 func (s *MysqlStat) Collect() {
-	s.wg.Add(14)
+	s.wg.Add(15)
 	go s.GetVersion()
 	go s.GetSlaveStats()
 	go s.GetGlobalStatus()
@@ -270,6 +270,7 @@ func (s *MysqlStat) Collect() {
 	go s.GetOldestQuery()
 	go s.GetOldestTrx()
 	go s.GetBinlogFiles()
+	go s.GetInnodbStats()
 	go s.GetInnodbBufferpoolMutexWaits()
 	go s.GetSecurity()
 	s.wg.Wait()
