@@ -19,8 +19,6 @@
 package tools
 
 import (
-	"log"
-	"os"
 	"testing"
 
 	"github.com/codahale/tmpmysqld"
@@ -46,7 +44,6 @@ func initDB(t testing.TB) mysqlDB {
 	test := new(mysqlDB)
 	test.db = server.DB
 	test.dsnString = "/inspect_mysql_test"
-	test.Logger = log.New(os.Stderr, "TESTING LOG: ", log.Lshortfile)
 
 	commands := []string{`
     CREATE TEMPORARY TABLE people (

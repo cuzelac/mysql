@@ -13,6 +13,7 @@ import (
 	"os"
 	"time"
 
+        "code.google.com/p/goconf/conf"
 	"github.com/measure/metricchecks"
 	"github.com/measure/metrics"
 	"github.com/measure/mysql/dbstat"
@@ -20,9 +21,10 @@ import (
 )
 
 func main() {
-	var user, password, address, conf, group, form, checkConfig string
+	var user, password, address, cnf, group, form, checkConfigFile string
 	var stepSec int
 	var servermode, human, loop bool
+	var checkConfig *conf.ConfigFile
 
 	m := metrics.NewMetricContext("system")
 
@@ -33,14 +35,14 @@ func main() {
 	flag.StringVar(&address, "address", ":12345",
 		"address to listen on for http if running in server mode")
 	flag.IntVar(&stepSec, "step", 2, "metrics are collected every step seconds")
-	flag.StringVar(&conf, "conf", "/root/.my.cnf", "configuration file")
+	flag.StringVar(&cnf, "cnf", "/root/.my.cnf", "configuration file")
 	flag.StringVar(&form, "form", "graphite", "output format of metrics to stdout")
 	flag.BoolVar(&human, "h", false,
 		"Makes output in MB for human readable sizes")
 	flag.StringVar(&group, "group", "", "group of metrics to collect")
 	flag.BoolVar(&loop, "loop", false,
 		"loop on collecting metrics when specifying group")
-	flag.StringVar(&checkConfig, "check", "", "config file to check metrics with")
+	flag.StringVar(&checkConfigFile, "check", "", "config file to check metrics with")
 	flag.Parse()
 
 	if servermode {
@@ -53,22 +55,30 @@ func main() {
 
 	var err error
 	var c metricchecks.Checker
-	if checkConfig != "" {
-		c, err = metricchecks.New("", checkConfig)
+	checkConfig = conf.NewConfigFile()
+	if checkConfigFile != "" {
+		cnf, err := metricchecks.FileToConfig(checkConfigFile)
 		if err != nil {
-			checkConfig = ""
+			checkConfigFile = ""
+		} else {
+			checkConfig = cnf
 		}
+	}
+
+	c, err = metricchecks.New("", checkConfig)
+	if err != nil {
+		checkConfigFile = ""
 	}
 
 	//if a group is defined, run metrics collections for just that group
 	if group != "" {
 		//initialize metrics collectors to not loop and collect
-		sqlstat, err := dbstat.New(m, user, password, conf)
+		sqlstat, err := dbstat.New(m, user, password, cnf)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		sqlstatTables, err := tablestat.New(m, user, password, conf)
+		sqlstatTables, err := tablestat.New(m, user, password, cnf)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -77,7 +87,7 @@ func main() {
 		//call the specific method name for the wanted group of metrics
 		sqlstat.CallByMethodName(group)
 		sqlstatTables.CallByMethodName(group)
-		if checkConfig != "" {
+		if checkConfigFile != "" {
 			checkMetrics(c, m)
 		}
 		outputMetrics(sqlstat, sqlstatTables, m, form)
@@ -87,7 +97,7 @@ func main() {
 			for _ = range ticker.C {
 				sqlstat.CallByMethodName(group)
 				sqlstatTables.CallByMethodName(group)
-				if checkConfig != "" {
+				if checkConfigFile != "" {
 					checkMetrics(c, m)
 				}
 				outputMetrics(sqlstat, sqlstatTables, m, form)
@@ -97,12 +107,12 @@ func main() {
 		sqlstatTables.Close()
 		//if no group is specified, just run all metrics collections
 	} else {
-		sqlstat, err := dbstat.New(m, user, password, conf)
+		sqlstat, err := dbstat.New(m, user, password, cnf)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		sqlstatTables, err := tablestat.New(m, user, password, conf)
+		sqlstatTables, err := tablestat.New(m, user, password, cnf)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -110,7 +120,7 @@ func main() {
 		sqlstat.Collect()
 		sqlstatTables.Collect()
 
-		if checkConfig != "" {
+		if checkConfigFile != "" {
 			checkMetrics(c, m)
 		}
 		outputMetrics(sqlstat, sqlstatTables, m, form)
