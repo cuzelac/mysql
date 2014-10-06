@@ -106,12 +106,12 @@ func TestMakeDsn2(t *testing.T) {
 
 func TestMakeDsn3(t *testing.T) {
 	dsn := map[string]string{
-		"user":        "brian",
-		"password":    "secret...shhh!",
-		"unix_socket": "unix_socket",
-		"dbname":      "mysqldb",
+		"user":     "brian",
+		"password": "secret...shhh!",
+		"host":     "unix(mysql.sock)",
+		"dbname":   "mysqldb",
 	}
-	expected := "brian:secret...shhh!@unix_socket/mysqldb?timeout=30s"
+	expected := "brian:secret...shhh!@unix(mysql.sock)/mysqldb?timeout=30s"
 	result := makeDsn(dsn)
 	if result != expected {
 		t.Error("Incorrect result, expected: " + expected + " but got: " + result)

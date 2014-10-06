@@ -13,7 +13,7 @@ import (
 	"os"
 	"time"
 
-        "code.google.com/p/goconf/conf"
+	"code.google.com/p/goconf/conf"
 	"github.com/measure/metricchecks"
 	"github.com/measure/metrics"
 	"github.com/measure/mysql/dbstat"
@@ -21,7 +21,7 @@ import (
 )
 
 func main() {
-	var user, password, address, cnf, group, form, checkConfigFile string
+	var user, password, host, address, cnf, group, form, checkConfigFile string
 	var stepSec int
 	var servermode, human, loop bool
 	var checkConfig *conf.ConfigFile
@@ -30,6 +30,8 @@ func main() {
 
 	flag.StringVar(&user, "u", "root", "user using database")
 	flag.StringVar(&password, "p", "", "password for database")
+	flag.StringVar(&host, "h", "",
+		"address and protocol of the database to connect to. leave blank for tcp(127.0.0.1:3306)")
 	flag.BoolVar(&servermode, "server", false,
 		"Runs continously and exposes metrics as JSON on HTTP")
 	flag.StringVar(&address, "address", ":12345",
@@ -73,12 +75,12 @@ func main() {
 	//if a group is defined, run metrics collections for just that group
 	if group != "" {
 		//initialize metrics collectors to not loop and collect
-		sqlstat, err := dbstat.New(m, user, password, cnf)
+		sqlstat, err := dbstat.New(m, user, password, host, cnf)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		sqlstatTables, err := tablestat.New(m, user, password, cnf)
+		sqlstatTables, err := tablestat.New(m, user, password, host, cnf)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -107,12 +109,12 @@ func main() {
 		sqlstatTables.Close()
 		//if no group is specified, just run all metrics collections
 	} else {
-		sqlstat, err := dbstat.New(m, user, password, cnf)
+		sqlstat, err := dbstat.New(m, user, password, host, cnf)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		sqlstatTables, err := tablestat.New(m, user, password, cnf)
+		sqlstatTables, err := tablestat.New(m, user, password, host, cnf)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)

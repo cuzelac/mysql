@@ -151,7 +151,7 @@ func makeDsn(dsn map[string]string) string {
 	if userok {
 		dsnString = dsnString + "@"
 	}
-	dsnString = dsnString + dsn["unix_socket"]
+	dsnString = dsnString + dsn["host"]
 	dsnString = dsnString + "/" + dsn["dbname"]
 	dsnString = dsnString + "?timeout=30s"
 	return dsnString
@@ -159,7 +159,7 @@ func makeDsn(dsn map[string]string) string {
 
 // create connection to mysql database here
 // when an error is encountered, still return database so that the logger may be used
-func New(user, password, config string) (MysqlDB, error) {
+func New(user, password, host, config string) (MysqlDB, error) {
 
 	dsn := map[string]string{"dbname": "information_schema"}
 	creds := map[string]string{"root": "/root/.my.cnf", "nrpe": "/etc/my_nrpe.cnf"}
@@ -175,10 +175,10 @@ func New(user, password, config string) (MysqlDB, error) {
 	if password != "" {
 		dsn["password"] = password
 	}
-	//	socket_file := "/var/lib/mysql/mysql.sock"
-	//	if _, err := os.Stat(socket_file); err == nil {
-	//		dsn["unix_socket"] = socket_file
-	//	}
+
+	// ex: "unix(/var/lib/mysql/mysql.sock)"
+	// ex: "tcp(your.db.host.com:3306)"
+	dsn["host"] = host
 
 	//Parse ini file to get password
 	ini_file := creds[user]
