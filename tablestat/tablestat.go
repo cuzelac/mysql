@@ -72,13 +72,13 @@ type MysqlStatPerDB struct {
 //initializes mysqlstat
 //takes as input: metrics context, username, password, path to config file for
 // mysql. username and password can be left as "" if a config file is specified.
-func New(m *metrics.MetricContext, user, password, config string) (*MysqlStatTables, error) {
+func New(m *metrics.MetricContext, user, password, host, config string) (*MysqlStatTables, error) {
 	s := new(MysqlStatTables)
 	s.m = m
 	s.nLock = &sync.Mutex{}
 	// connect to database
 	var err error
-	s.db, err = tools.New(user, password, config)
+	s.db, err = tools.New(user, password, host, config)
 	s.nLock.Lock()
 	s.DBs = make(map[string]*DBStats)
 	s.nLock.Unlock()

@@ -225,12 +225,12 @@ SELECT COUNT(*)
 //initializes mysqlstat.
 //takes as input: metrics context, username, password, path to config file for
 // mysql. username and password can be left as "" if a config file is specified.
-func New(m *metrics.MetricContext, user, password, config string) (*MysqlStat, error) {
+func New(m *metrics.MetricContext, user, password, host, config string) (*MysqlStat, error) {
 	s := new(MysqlStat)
 
 	// connect to database
 	var err error
-	s.db, err = tools.New(user, password, config)
+	s.db, err = tools.New(user, password, host, config)
 	s.SetMaxConnections(defaultMaxConns)
 	if err != nil {
 		s.db.Log(err)
