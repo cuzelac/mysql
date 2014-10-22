@@ -67,10 +67,6 @@ type MysqlStatMetrics struct {
 	Uptime                    *metrics.Counter
 	ThreadsRunning            *metrics.Gauge
 
-	//GetInnodbBufferPoolMutexWaits
-	InnodbBufpoolLRUMutexOSWait *metrics.Counter
-	InnodbBufpoolZipMutexOSWait *metrics.Counter
-
 	//GetOldestQueryS
 	OldestQueryS *metrics.Gauge
 
@@ -176,7 +172,6 @@ type MysqlStatMetrics struct {
 
 const (
 	slaveQuery  = "SHOW SLAVE STATUS;"
-	mutexQuery  = "SHOW ENGINE INNODB MUTEX;"
 	oldestQuery = `
  SELECT time FROM information_schema.processlist
   WHERE command NOT IN ('Sleep','Connect','Binlog Dump')
@@ -257,7 +252,7 @@ func MysqlStatMetricsNew(m *metrics.MetricContext) *MysqlStatMetrics {
 // sql.DB is safe for concurrent use by multiple goroutines
 // so launching each metric collector as its own goroutine is safe
 func (s *MysqlStat) Collect() {
-	s.wg.Add(15)
+	s.wg.Add(14)
 	go s.GetVersion()
 	go s.GetSlaveStats()
 	go s.GetGlobalStatus()
@@ -271,7 +266,6 @@ func (s *MysqlStat) Collect() {
 	go s.GetOldestTrx()
 	go s.GetBinlogFiles()
 	go s.GetInnodbStats()
-	go s.GetInnodbBufferpoolMutexWaits()
 	go s.GetSecurity()
 	s.wg.Wait()
 }
@@ -377,39 +371,6 @@ func (s *MysqlStat) GetGlobalStatus() {
 			case *metrics.Gauge:
 				met.Set(float64(val))
 			}
-		}
-	}
-	s.wg.Done()
-	return
-}
-
-//get mutex info
-func (s *MysqlStat) GetInnodbBufferpoolMutexWaits() {
-	res, err := s.db.QueryReturnColumnDict(mutexQuery)
-	if err != nil {
-		s.db.Log(err)
-		s.wg.Done()
-		return
-	}
-
-	//Searching for the strings "&buf_pool->LRU_list_mutex" and "&buf_pool->zip_mutex"
-	// in query result for the mutex's status
-	mets := map[string]*metrics.Counter{"&buf_pool->LRU_list_mutex": s.Metrics.InnodbBufpoolLRUMutexOSWait,
-		"&buf_pool->zip_mutex": s.Metrics.InnodbBufpoolZipMutexOSWait}
-	for i, name := range res["Name"] {
-		status := res["Status"][i]
-		metric, ok := mets[name]
-		if ok {
-			if !strings.Contains(status, "os_waits=") {
-				s.db.Log(errors.New("mutex status did not contain 'os_waits=': " + status))
-				s.wg.Done()
-				return
-			}
-			os_waits, err := strconv.ParseInt(status[9:], 10, 64)
-			if err != nil {
-				s.db.Log(err)
-			}
-			metric.Set(uint64(os_waits))
 		}
 	}
 	s.wg.Done()
