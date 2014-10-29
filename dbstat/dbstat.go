@@ -675,9 +675,7 @@ func (s *MysqlStat) GetInnodbStats() {
 
 	//parse the result
 	var idb *tools.InnodbStats
-	for _, val := range res {
-		idb, _ = tools.ParseInnodbStats(val[0])
-	}
+	idb, _ = tools.ParseInnodbStats(res["Status"][0])
 	vars := map[string]interface{}{
 		"OS_file_reads":               s.Metrics.OSFileReads,
 		"OS_file_writes":              s.Metrics.OSFileWrites,

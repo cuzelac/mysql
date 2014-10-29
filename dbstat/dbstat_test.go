@@ -132,11 +132,6 @@ func TestBasic(t *testing.T) {
 			"Relay_Master_Log_File": []string{"some-name-bin.010"},
 			"Exec_Master_Log_Pos":   []string{"79"},
 		},
-		// getInnodbBufferpoolMutexWaits
-		mutexQuery: map[string][]string{
-			"Name":   []string{"&buf_pool->LRU_list_mutex", "&buf_pool->zip_mutex"},
-			"Status": []string{"os_waits=54321", "os_waits=4321"},
-		},
 		//getOldest
 		oldestQuery: map[string][]string{
 			"time": []string{"12345"},
@@ -193,31 +188,29 @@ func TestBasic(t *testing.T) {
 	}
 	//expected results
 	expectedValues = map[interface{}]interface{}{
-		s.Metrics.SlaveSecondsBehindMaster:    float64(8),
-		s.Metrics.SlaveSeqFile:                float64(10),
-		s.Metrics.SlavePosition:               uint64(79),
-		s.Metrics.Queries:                     uint64(8),
-		s.Metrics.Uptime:                      uint64(100),
-		s.Metrics.ThreadsRunning:              float64(5),
-		s.Metrics.MaxConnections:              float64(10),
-		s.Metrics.CurrentSessions:             float64(5),
-		s.Metrics.ActiveSessions:              float64(2),
-		s.Metrics.UnauthenticatedSessions:     float64(1),
-		s.Metrics.LockedSessions:              float64(0),
-		s.Metrics.SessionTablesLocks:          float64(1),
-		s.Metrics.SessionsCopyingToTable:      float64(1),
-		s.Metrics.SessionsStatistics:          float64(1),
-		s.Metrics.IdenticalQueriesStacked:     float64(5),
-		s.Metrics.IdenticalQueriesMaxAge:      float64(10),
-		s.Metrics.BinlogSeqFile:               float64(3),
-		s.Metrics.BinlogPosition:              uint64(73),
-		s.Metrics.Version:                     float64(1.234),
-		s.Metrics.ActiveLongRunQueries:        float64(7),
-		s.Metrics.BinlogSize:                  float64(1111),
-		s.Metrics.QueryResponseSec_0001:       uint64(300),
-		s.Metrics.OldestQueryS:                float64(12345),
-		s.Metrics.InnodbBufpoolLRUMutexOSWait: uint64(54321),
-		s.Metrics.InnodbBufpoolZipMutexOSWait: uint64(4321),
+		s.Metrics.SlaveSecondsBehindMaster: float64(8),
+		s.Metrics.SlaveSeqFile:             float64(10),
+		s.Metrics.SlavePosition:            uint64(79),
+		s.Metrics.Queries:                  uint64(8),
+		s.Metrics.Uptime:                   uint64(100),
+		s.Metrics.ThreadsRunning:           float64(5),
+		s.Metrics.MaxConnections:           float64(10),
+		s.Metrics.CurrentSessions:          float64(5),
+		s.Metrics.ActiveSessions:           float64(2),
+		s.Metrics.UnauthenticatedSessions:  float64(1),
+		s.Metrics.LockedSessions:           float64(0),
+		s.Metrics.SessionTablesLocks:       float64(1),
+		s.Metrics.SessionsCopyingToTable:   float64(1),
+		s.Metrics.SessionsStatistics:       float64(1),
+		s.Metrics.IdenticalQueriesStacked:  float64(5),
+		s.Metrics.IdenticalQueriesMaxAge:   float64(10),
+		s.Metrics.BinlogSeqFile:            float64(3),
+		s.Metrics.BinlogPosition:           uint64(73),
+		s.Metrics.Version:                  float64(1.234),
+		s.Metrics.ActiveLongRunQueries:     float64(7),
+		s.Metrics.BinlogSize:               float64(1111),
+		s.Metrics.QueryResponseSec_0001:    uint64(300),
+		s.Metrics.OldestQueryS:             float64(12345),
 	}
 	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)
@@ -285,57 +278,6 @@ func TestVersion3(t *testing.T) {
 	}
 	expectedValues = map[interface{}]interface{}{
 		s.Metrics.Version: float64(0.123456),
-	}
-	s.Collect()
-	time.Sleep(time.Millisecond * 1000 * 1)
-	err := checkResults()
-	if err != "" {
-		t.Error(err)
-	}
-}
-
-func TestMutexes1(t *testing.T) {
-	//intialize MysqlStat
-	s := initMysqlStat()
-
-	//set desired test result
-	testquerycol = map[string]map[string][]string{
-		mutexQuery: map[string][]string{
-			"Name":   []string{"&buf_pool->LRU_list_mutex", "&buf_pool->zip_mutex"},
-			"Status": []string{"os_waits=2", "os_waits=3"},
-		},
-	}
-
-	//set expected result
-	expectedValues = map[interface{}]interface{}{
-		s.Metrics.InnodbBufpoolLRUMutexOSWait: uint64(2),
-		s.Metrics.InnodbBufpoolZipMutexOSWait: uint64(3),
-	}
-	//make sure to sleep for ~1 second before checking results
-	// otherwise no metrics will be collected in time
-	s.Collect()
-	time.Sleep(time.Millisecond * 1000 * 1)
-	//check results
-	err := checkResults()
-	if err != "" {
-		t.Error(err)
-	}
-}
-
-func TestMutexes2(t *testing.T) {
-	//intialize MysqlStat
-	s := initMysqlStat()
-	testquerycol = map[string]map[string][]string{
-		mutexQuery: map[string][]string{
-			"Name": []string{"some other string", "&buf_pool->LRU_list_mutex",
-				"something else", "&buf_pool->zip_mutex"},
-			"Status": []string{"os_waits=1", "os_waits=2", "os_waits=5", "os_waits=3"},
-		},
-	}
-
-	expectedValues = map[interface{}]interface{}{
-		s.Metrics.InnodbBufpoolLRUMutexOSWait: uint64(2),
-		s.Metrics.InnodbBufpoolZipMutexOSWait: uint64(3),
 	}
 	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)
