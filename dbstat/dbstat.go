@@ -61,6 +61,9 @@ type MysqlStatMetrics struct {
 	InnodbRowLockCurrentWaits *metrics.Gauge
 	InnodbRowLockTimeAvg      *metrics.Gauge
 	InnodbRowLockTimeMax      *metrics.Counter
+	PreparedStmtCount         *metrics.Gauge
+	MaxPreparedStmtCount      *metrics.Gauge
+	PreparedStmtPct           *metrics.Gauge
 	Queries                   *metrics.Counter
 	SortMergePasses           *metrics.Counter
 	ThreadsConnected          *metrics.Gauge
@@ -350,6 +353,8 @@ func (s *MysqlStat) GetGlobalStatus() {
 		"Innodb_row_lock_current_waits": s.Metrics.InnodbRowLockCurrentWaits,
 		"Innodb_row_lock_time_avg":      s.Metrics.InnodbRowLockTimeAvg,
 		"Innodb_row_lock_time_max":      s.Metrics.InnodbRowLockTimeMax,
+		"PreparedStmtCount":             s.Metrics.PreparedStmtCount,
+		"MaxPreparedStmtCount":          s.Metrics.MaxPreparedStmtCount,
 		"Queries":                       s.Metrics.Queries,
 		"Sort_merge_passes":             s.Metrics.SortMergePasses,
 		"Threads_connected":             s.Metrics.ThreadsConnected,
@@ -373,6 +378,10 @@ func (s *MysqlStat) GetGlobalStatus() {
 			}
 		}
 	}
+
+	pct := (s.Metrics.PreparedStmtCount.Get() / s.Metrics.MaxPreparedStmtCount.Get()) * 100
+	s.Metrics.PreparedStmtPct.Set(pct)
+
 	s.wg.Done()
 	return
 }
