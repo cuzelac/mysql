@@ -62,7 +62,6 @@ type MysqlStatMetrics struct {
 	InnodbRowLockTimeAvg      *metrics.Gauge
 	InnodbRowLockTimeMax      *metrics.Counter
 	PreparedStmtCount         *metrics.Gauge
-	MaxPreparedStmtCount      *metrics.Gauge
 	PreparedStmtPct           *metrics.Gauge
 	Queries                   *metrics.Counter
 	SortMergePasses           *metrics.Counter
@@ -182,10 +181,11 @@ const (
 	oldestTrx = `
   SELECT UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(MIN(trx_started)) AS time 
     FROM information_schema.innodb_trx;`
-	responseTimeQuery = "SELECT time, count FROM INFORMATION_SCHEMA.QUERY_RESPONSE_TIME;"
-	binlogQuery       = "SHOW MASTER LOGS;"
-	globalStatsQuery  = "SHOW GLOBAL STATUS;"
-	longQuery         = `
+	responseTimeQuery         = "SELECT time, count FROM INFORMATION_SCHEMA.QUERY_RESPONSE_TIME;"
+	binlogQuery               = "SHOW MASTER LOGS;"
+	globalStatsQuery          = "SHOW GLOBAL STATUS;"
+	maxPreparedStmtCountQuery = "SHOW GLOBAL VARIABLES LIKE 'max_prepared_stmt_count';"
+	longQuery                 = `
     SELECT * FROM information_schema.processlist
      WHERE command NOT IN ('Sleep', 'Connect', 'Binlog Dump')
        AND time > 30;`
@@ -321,7 +321,21 @@ func (s *MysqlStat) GetSlaveStats() {
 
 //gets global statuses
 func (s *MysqlStat) GetGlobalStatus() {
-	res, err := s.db.QueryMapFirstColumnToRow(globalStatsQuery)
+	res, err := s.db.QueryReturnColumnDict(maxPreparedStmtCountQuery)
+	if err != nil {
+		s.db.Log(err)
+		s.wg.Done()
+		return
+	}
+	var max_prepared_stmt_count int64
+	if err == nil && len(res["Value"]) > 0 {
+		max_prepared_stmt_count, err = strconv.ParseInt(res["Value"][0], 10, 64)
+		if err != nil {
+			s.db.Log(err)
+		}
+	}
+
+	res, err = s.db.QueryMapFirstColumnToRow(globalStatsQuery)
 	if err != nil {
 		s.db.Log(err)
 		s.wg.Done()
@@ -353,8 +367,7 @@ func (s *MysqlStat) GetGlobalStatus() {
 		"Innodb_row_lock_current_waits": s.Metrics.InnodbRowLockCurrentWaits,
 		"Innodb_row_lock_time_avg":      s.Metrics.InnodbRowLockTimeAvg,
 		"Innodb_row_lock_time_max":      s.Metrics.InnodbRowLockTimeMax,
-		"PreparedStmtCount":             s.Metrics.PreparedStmtCount,
-		"MaxPreparedStmtCount":          s.Metrics.MaxPreparedStmtCount,
+		"Prepared_stmt_count":           s.Metrics.PreparedStmtCount,
 		"Queries":                       s.Metrics.Queries,
 		"Sort_merge_passes":             s.Metrics.SortMergePasses,
 		"Threads_connected":             s.Metrics.ThreadsConnected,
@@ -379,8 +392,10 @@ func (s *MysqlStat) GetGlobalStatus() {
 		}
 	}
 
-	pct := (s.Metrics.PreparedStmtCount.Get() / s.Metrics.MaxPreparedStmtCount.Get()) * 100
-	s.Metrics.PreparedStmtPct.Set(pct)
+	if max_prepared_stmt_count != 0 {
+		pct := (s.Metrics.PreparedStmtCount.Get() / float64(max_prepared_stmt_count)) * 100
+		s.Metrics.PreparedStmtPct.Set(pct)
+	}
 
 	s.wg.Done()
 	return
