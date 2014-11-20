@@ -340,11 +340,15 @@ func TestSlave1(t *testing.T) {
 			"Relay_Master_Log_File": []string{"some-name-bin.01345"},
 			"Exec_Master_Log_Pos":   []string{"7"},
 		},
+		slaveBackupQuery: map[string][]string{
+			"count": []string{"0"},
+		},
 	}
 	expectedValues = map[interface{}]interface{}{
 		s.Metrics.SlaveSecondsBehindMaster: float64(80),
 		s.Metrics.SlaveSeqFile:             float64(1345),
 		s.Metrics.SlavePosition:            uint64(7),
+		s.Metrics.ReplicationRunning:       float64(1),
 	}
 	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)
@@ -354,7 +358,7 @@ func TestSlave1(t *testing.T) {
 	}
 }
 
-// Test basic parsing of slave info query
+// Test when slave is down and backup isn't running
 func TestSlave2(t *testing.T) {
 	//intitialize MysqlStat
 	s := initMysqlStat()
@@ -362,15 +366,49 @@ func TestSlave2(t *testing.T) {
 	testquerycol = map[string]map[string][]string{
 		//getSlaveStats()
 		slaveQuery: map[string][]string{
-			"Seconds_Behind_Master": []string{"80"},
+			"Seconds_Behind_Master": []string{"NULL"},
 			"Relay_Master_Log_File": []string{"some.name.bin.01345"},
 			"Exec_Master_Log_Pos":   []string{"7"},
 		},
+		slaveBackupQuery: map[string][]string{
+			"count": []string{"0"},
+		},
 	}
 	expectedValues = map[interface{}]interface{}{
-		s.Metrics.SlaveSecondsBehindMaster: float64(80),
+		s.Metrics.SlaveSecondsBehindMaster: float64(-1),
 		s.Metrics.SlaveSeqFile:             float64(1345),
 		s.Metrics.SlavePosition:            uint64(7),
+		s.Metrics.ReplicationRunning:       float64(-1),
+	}
+	s.Collect()
+	time.Sleep(time.Millisecond * 1000 * 1)
+	err := checkResults()
+	if err != "" {
+		t.Error(err)
+	}
+}
+
+// Test when slave is down and backup is running
+func TestSlave3(t *testing.T) {
+	//intitialize MysqlStat
+	s := initMysqlStat()
+	//set desired test output
+	testquerycol = map[string]map[string][]string{
+		//getSlaveStats()
+		slaveQuery: map[string][]string{
+			"Seconds_Behind_Master": []string{"NULL"},
+			"Relay_Master_Log_File": []string{"some.name.bin.01345"},
+			"Exec_Master_Log_Pos":   []string{"7"},
+		},
+		slaveBackupQuery: map[string][]string{
+			"count": []string{"1"},
+		},
+	}
+	expectedValues = map[interface{}]interface{}{
+		s.Metrics.SlaveSecondsBehindMaster: float64(-1),
+		s.Metrics.SlaveSeqFile:             float64(1345),
+		s.Metrics.SlavePosition:            uint64(7),
+		s.Metrics.ReplicationRunning:       float64(1),
 	}
 	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)

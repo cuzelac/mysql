@@ -34,6 +34,7 @@ type MysqlStatMetrics struct {
 	SlaveSecondsBehindMaster *metrics.Gauge
 	SlaveSeqFile             *metrics.Gauge
 	SlavePosition            *metrics.Counter
+	ReplicationRunning       *metrics.Gauge
 
 	//GetGlobalStatus
 	BinlogCacheDiskUse        *metrics.Counter
@@ -214,7 +215,7 @@ const (
 	innodbQuery      = "SHOW GLOBAL VARIABLES LIKE 'innodb_log_file_size';"
 	securityQuery    = "SELECT user FROM mysql.user WHERE password = '' AND ssl_type = '';"
 	slaveBackupQuery = `
-SELECT COUNT(*) 
+SELECT COUNT(*) as count
   FROM information_schema.processlist 
  WHERE user LIKE '%backup%';`
 	defaultMaxConns = 5
@@ -275,11 +276,22 @@ func (s *MysqlStat) Collect() {
 
 // get_slave_stats gets slave statistics
 func (s *MysqlStat) GetSlaveStats() {
+	s.Metrics.ReplicationRunning.Set(float64(-1))
+	numBackups := float64(0)
+
 	res, err := s.db.QueryReturnColumnDict(slaveBackupQuery)
 	if err != nil {
 		s.db.Log(err)
-	} else if len(res) > 0 {
-		s.Metrics.SlaveSecondsBehindMaster.Set(float64(-1))
+	} else if len(res["count"]) > 0 {
+		numBackups, err = strconv.ParseFloat(string(res["count"][0]), 64)
+		if err != nil {
+			s.db.Log(err)
+		} else {
+			if numBackups > 0 {
+				s.Metrics.SlaveSecondsBehindMaster.Set(float64(-1))
+				s.Metrics.ReplicationRunning.Set(float64(1))
+			}
+		}
 	}
 	res, err = s.db.QueryReturnColumnDict(slaveQuery)
 	if err != nil {
@@ -292,8 +304,14 @@ func (s *MysqlStat) GetSlaveStats() {
 		seconds_behind_master, err := strconv.ParseFloat(string(res["Seconds_Behind_Master"][0]), 64)
 		if err != nil {
 			s.db.Log(err)
+			s.Metrics.SlaveSecondsBehindMaster.Set(float64(-1))
+			if numBackups == 0 {
+				s.Metrics.ReplicationRunning.Set(float64(-1))
+			}
+		} else {
+			s.Metrics.SlaveSecondsBehindMaster.Set(float64(seconds_behind_master))
+			s.Metrics.ReplicationRunning.Set(float64(1))
 		}
-		s.Metrics.SlaveSecondsBehindMaster.Set(float64(seconds_behind_master))
 	}
 
 	relay_master_log_file, _ := res["Relay_Master_Log_File"]
